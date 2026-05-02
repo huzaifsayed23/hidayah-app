@@ -23,9 +23,10 @@ function cn(...inputs: any[]) {
 
 const REACTION_EMOJIS = ['🤲', '🌙', '❤️', '✨', '📖', '🌿', '👍'];
 
-export default function CircleChatPage() {
+export default function CircleChatPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const { id } = useParams();
+  const resolvedParams = React.use(params);
+  const id = resolvedParams.id;
   const [circle, setCircle] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");

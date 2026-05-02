@@ -102,8 +102,8 @@ export async function getVersesByChapter(chapterId: number): Promise<Verse[]> {
  * Authorization header (from localStorage) for maximum localhost reliability.
  */
 export async function hidayahFetch(url: string, options: RequestInit = {}) {
-  // Resolve relative URLs
-  const fullUrl = url.startsWith('/') ? url : `/${url}`;
+  // Resolve relative URLs to the production API URL
+  const fullUrl = url.startsWith('http') ? url : `${HIDAYAH_API_URL}${url.startsWith('/') ? url : `/${url}`}`;
 
   // Build headers with auth token from localStorage (if available)
   const headers: Record<string, string> = {

@@ -261,7 +261,7 @@ export default function FeedCard({
               <HadithCard hadith={hadith} isLightText={isLightText} transparent={hasGradient} customTextColor={savedTextColor} />
             </div>
           )}
-          <div className="pr-1">
+          <div className={`pr-1 ${!compact ? 'max-h-[300px] overflow-y-auto custom-scrollbar overscroll-contain' : ''}`}>
             <p 
               className={`${compact ? 'text-[11px] sm:text-xs md:text-sm line-clamp-6' : 'text-lg md:text-xl'} allow-select ${savedTextColor ? '' : textColor}`}
               style={{
