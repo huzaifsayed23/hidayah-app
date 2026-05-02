@@ -1,6 +1,6 @@
 const BASE_URL = "https://api.quran.com/api/v4";
 const FOUNDATION_BASE_URL = "https://apis.quran.foundation/content/api/v4";
-export const HIDAYAH_API_URL = "";
+export const HIDAYAH_API_URL = process.env.NEXT_PUBLIC_HIDAYAH_API_URL || "";
 
 
 export interface Juz {

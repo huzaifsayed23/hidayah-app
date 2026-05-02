@@ -38,7 +38,7 @@ export default async function DashboardPage() {
 
   const MENU_ITEMS = [
     { label: "Community Feed", href: "/community", icon: Users },
-    { label: "Group Discussions", href: "/groups", icon: MessageSquare },
+    { label: "Group Discussions", href: "/community/circles", icon: MessageSquare },
     { label: "My Profile", href: "/profile", icon: UserIcon },
     { label: "Surah Library", href: "/surahs", icon: BookOpen },
     { label: "Quran Reader (Juz)", href: "/quran", icon: BookOpen },

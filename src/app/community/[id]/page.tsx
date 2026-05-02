@@ -462,7 +462,7 @@ export default function CircleChatPage() {
 
       if (res.ok) {
 
-        router.push('/groups');
+        router.push('/community/circles');
       } else {
         const data = await res.json();
         alert(data.message || "Error deleting circle");
@@ -544,7 +544,7 @@ export default function CircleChatPage() {
                 >
                   <div className="p-1.5 flex flex-col">
                     <button 
-                      onClick={() => { setShowEmojiPicker(null); router.push(`/groups/${id}/info`); }}
+                      onClick={() => { setShowEmojiPicker(null); router.push(`/community/${id}/info`); }}
                       className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-[var(--color-hidayah-secondary)] rounded-xl text-sm font-medium transition-colors text-[var(--color-hidayah-dark)]"
                     >
                       <Info className="w-4 h-4 opacity-60" /> Circle Info

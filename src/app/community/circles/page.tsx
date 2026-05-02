@@ -159,7 +159,7 @@ export default function CirclesPage() {
       </header>
 
       <Link 
-        href="/groups/create"
+        href="/community/circles/create"
         className="w-full mb-8 p-6 bg-[var(--color-hidayah-dark)] rounded-[32px] flex items-center justify-between group hover:opacity-90 transition-all shadow-md"
       >
         <div className="flex items-center gap-4">
@@ -212,7 +212,7 @@ export default function CirclesPage() {
           filteredCircles.map((circle) => (
             <div key={circle._id} className="relative group/item">
               <Link
-                href={activeTab === 'my' ? `/groups/${circle._id}` : '#'}
+                href={activeTab === 'my' ? `/community/${circle._id}` : '#'}
                 onClick={(e) => activeTab === 'discover' && e.preventDefault()}
                 onContextMenu={(e) => activeTab === 'my' && handleContextMenu(e, circle)}
                 onTouchStart={() => activeTab === 'my' && handleTouchStart(circle)}

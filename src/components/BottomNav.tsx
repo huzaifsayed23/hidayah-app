@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 export default function BottomNav() {
   const pathname = usePathname();
 
-  const isChatPage = pathname?.startsWith('/groups/') && pathname !== '/groups' && pathname !== '/groups/create';
+  const isChatPage = pathname?.startsWith('/community/') && pathname !== '/community' && pathname !== '/community/create' && pathname !== '/community/circles';
   const isQuranReadPage = pathname?.startsWith('/quran/read');
   
   const isQuizPage = pathname?.startsWith('/quiz');
@@ -19,7 +19,7 @@ export default function BottomNav() {
     { name: 'Feed', href: '/community', icon: Home },
     { name: 'Explore', href: '/dashboard', icon: LayoutGrid },
     { name: 'Create', href: '/community/create', icon: PlusCircle, isSpecial: true },
-    { name: 'Circles', href: '/groups', icon: Users },
+    { name: 'Circles', href: '/community/circles', icon: Users },
     { name: 'Profile', href: '/profile', icon: User },
   ];
 

@@ -142,7 +142,7 @@ export default function CircleInfoPage() {
   };
 
   const handleShare = () => {
-    const url = window.location.origin + `/groups/${id}`;
+    const url = window.location.origin + `/community/${id}`;
     navigator.clipboard.writeText(url);
     setShowCopied(true);
     setTimeout(() => setShowCopied(false), 2000);
@@ -177,7 +177,7 @@ export default function CircleInfoPage() {
       });
 
       if (res.ok) {
-        router.push('/groups');
+        router.push('/community/circles');
       } else {
         const data = await res.json();
         alert(data.message || "Error leaving circle");
@@ -198,7 +198,7 @@ export default function CircleInfoPage() {
       });
 
       if (res.ok) {
-        router.push('/groups');
+        router.push('/community/circles');
       } else {
         const data = await res.json();
         alert(data.message || "Error deleting circle");
@@ -296,7 +296,7 @@ export default function CircleInfoPage() {
             <h1 className="text-xl font-serif font-bold text-[var(--color-hidayah-dark)]">Circle Info</h1>
           </div>
           <button 
-            onClick={() => router.push(`/groups/${id}`)}
+            onClick={() => router.push(`/community/${id}`)}
             className="flex items-center gap-2 px-4 py-2 bg-[var(--color-hidayah-dark)] text-[var(--color-hidayah-primary)] rounded-full text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all"
           >
             <MessageCircle className="w-4 h-4" /> Open Chat
