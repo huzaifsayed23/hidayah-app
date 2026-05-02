@@ -19,7 +19,7 @@ async function getAuthUser() {
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string, messageId: string } }
+  { params }: { params: Promise<{ id: string; messageId: string }> }
 ) {
   try {
     const user = await getAuthUser();
@@ -52,7 +52,7 @@ export async function GET(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string, messageId: string } }
+  { params }: { params: Promise<{ id: string; messageId: string }> }
 ) {
   try {
     const user = await getAuthUser();
