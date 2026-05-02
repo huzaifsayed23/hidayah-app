@@ -160,10 +160,10 @@ export default function QuizSelectionPage() {
 
                   {/* Rewards Preview */}
                   <div className="mt-4 flex flex-wrap gap-4">
-                    {BADGES.find(b => b.level === level.id) && (
+                    {BADGES.find(b => b.levelRequired === level.id) && (
                       <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest ${completed ? 'text-green-600' : 'text-hidayah-gold'}`}>
                         <Trophy className="w-3 h-3" />
-                        {BADGES.find(b => b.level === level.id)?.title}
+                        {BADGES.find(b => b.levelRequired === level.id)?.name}
                       </div>
                     )}
                     {REFLECTION_THEMES.find(t => t.levelRequired === level.id) && (

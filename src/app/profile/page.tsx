@@ -9,7 +9,7 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import dbConnect from '@/lib/mongodb';
 import Post from '@/models/Post';
-import { MOOD_PALETTES } from '@/lib/constants';
+import { MOOD_PALETTES } from '@/lib/gradients';
 import { BADGES, REFLECTION_THEMES } from '@/constants/rewards';
 import { NatureBackground } from '@/components/NatureBackground';
 import BottomNav from '@/components/BottomNav';

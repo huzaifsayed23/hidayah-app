@@ -44,7 +44,7 @@ export async function POST(
     if (hasSaved) {
       user.savedPosts = user.savedPosts.filter((id: any) => id.toString() !== postIdStr);
     } else {
-      user.savedPosts.push(postId);
+      user.savedPosts.push(postId as any);
     }
 
     await user.save();

@@ -30,12 +30,12 @@ export async function POST(
     const dbUser = await User.findById(user.userId);
     if (!dbUser) return NextResponse.json({ message: 'User not found' }, { status: 404 });
 
-    const isMuted = dbUser.mutedCircles.includes(id);
+    const isMuted = dbUser.mutedCircles.includes(id as any);
 
     if (isMuted) {
       dbUser.mutedCircles = dbUser.mutedCircles.filter((cId: any) => cId.toString() !== id);
     } else {
-      dbUser.mutedCircles.push(id);
+      dbUser.mutedCircles.push(id as any);
     }
 
     await dbUser.save();
@@ -61,7 +61,7 @@ export async function GET(
     const dbUser = await User.findById(user.userId);
     if (!dbUser) return NextResponse.json({ message: 'User not found' }, { status: 404 });
 
-    const isMuted = dbUser.mutedCircles.includes(id);
+    const isMuted = dbUser.mutedCircles.includes(id as any);
 
     return NextResponse.json({ isMuted });
   } catch (error) {

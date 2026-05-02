@@ -14,7 +14,7 @@ const SECTION_ANIMATION = {
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-20px" },
   transition: { duration: 0.8, ease: "easeOut" }
-};
+} as const;
 
 export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) => {
   return (

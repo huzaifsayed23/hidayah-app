@@ -52,8 +52,8 @@ export async function POST(
       createdAt: new Date()
     };
 
-    if (!post.replies) post.replies = [];
-    post.replies.push(newReply);
+    if (!post.replies) (post as any).replies = [];
+    post.replies.push(newReply as any);
     post.commentCount = post.replies.length;
     await post.save();
 

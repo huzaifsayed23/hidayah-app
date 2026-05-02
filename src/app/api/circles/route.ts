@@ -91,7 +91,7 @@ export async function POST(req: Request) {
           status: 'pending'
         }));
         
-        await Promise.all(invitations.map(invite => Notification.create(invite)));
+        await Promise.all(invitations.map((invite: any) => Notification.create(invite)));
       }
 
       return NextResponse.json({ circle: newCircle }, { status: 201 });

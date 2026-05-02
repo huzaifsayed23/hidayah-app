@@ -27,6 +27,7 @@ export async function POST(req: Request) {
     
     // Check if already bookmarked
     const user = await User.findById(userId);
+    if (!user) return NextResponse.json({ message: 'User not found' }, { status: 404 });
     const exists = user.bookmarks.some((b: any) => b.verseKey === bookmark.verseKey);
     
     if (exists) {
@@ -54,6 +55,7 @@ export async function GET() {
   
       await dbConnect();
       const user = await User.findById(userId).select('bookmarks');
+      if (!user) return NextResponse.json({ bookmarks: [] });
       return NextResponse.json({ bookmarks: user.bookmarks });
     } catch (error) {
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
