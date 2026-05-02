@@ -5,8 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Hidayah',
   webDir: 'out',
   server: {
-    // When you deploy to Vercel, put your URL here for instant updates
-    // Example: url: 'https://your-hidayah-app.vercel.app',
+    url: 'https://hidayah-gold.vercel.app', 
     cleartext: true,
     allowNavigation: ['*']
   }
