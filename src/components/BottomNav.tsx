@@ -8,17 +8,17 @@ import { usePathname } from 'next/navigation';
 export default function BottomNav() {
   const pathname = usePathname();
 
-  const isChatPage = pathname?.startsWith('/community/') && pathname !== '/community' && pathname !== '/community/create' && pathname !== '/community/circles';
+  const isChatPage = pathname?.startsWith('/community/') && pathname !== '/community' && pathname !== '/community/circles/create' && pathname !== '/community/circles';
   const isQuranReadPage = pathname?.startsWith('/quran/read');
   
   const isQuizPage = pathname?.startsWith('/quiz');
   
-  if (pathname === '/' || pathname === '/onboarding' || pathname === '/hadith' || pathname === '/community/create' || isChatPage || isQuranReadPage || isQuizPage) return null;
+  if (pathname === '/' || pathname === '/onboarding' || pathname === '/hadith' || pathname === '/community/circles/create' || isChatPage || isQuranReadPage || isQuizPage) return null;
 
   const navItems = [
     { name: 'Feed', href: '/community', icon: Home },
     { name: 'Explore', href: '/dashboard', icon: LayoutGrid },
-    { name: 'Create', href: '/community/create', icon: PlusCircle, isSpecial: true },
+    { name: 'Create', href: '/community/circles/create', icon: PlusCircle, isSpecial: true },
     { name: 'Circles', href: '/community/circles', icon: Users },
     { name: 'Profile', href: '/profile', icon: User },
   ];

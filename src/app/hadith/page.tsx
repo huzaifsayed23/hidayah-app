@@ -159,7 +159,7 @@ export default function DailyHadithPage() {
                   <button 
                     onClick={() => {
                       sessionStorage.setItem('pendingHadith', JSON.stringify(hadith));
-                      router.push('/community/create?attach=hadith');
+                      router.push('/community/circles/create?attach=hadith');
                     }}
                     className="px-8 py-4 bg-hidayah-dark text-[var(--color-hidayah-primary)] rounded-2xl font-bold hover:opacity-90 transition-all shadow-lg shadow-black/10"
                   >
