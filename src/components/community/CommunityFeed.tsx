@@ -108,7 +108,7 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
       <div className="flex flex-col gap-6">
         {searchQuery.length > 0 && activeTab === 'users' ? (
           // User Results (omitted for brevity, keep existing logic)
-          <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1 pb-4 scrollbar-hide">
+          <div className="flex flex-col gap-2 pr-1 pb-4">
             {isSearchingUsers ? (
               <div className="py-12 text-center animate-pulse">
                 <p className="text-[var(--color-hidayah-dark)] opacity-40 font-medium text-sm">Searching community members...</p>

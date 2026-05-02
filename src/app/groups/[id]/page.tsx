@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -10,7 +11,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { getPusherClient } from '@/lib/pusher';
 import PresenceAvatar from '@/components/PresenceAvatar';
+import { HIDAYAH_API_URL, hidayahFetch } from '@/lib/api';
+
 import { clsx } from 'clsx';
+
 import { twMerge } from 'tailwind-merge';
 
 function cn(...inputs: any[]) {
@@ -70,10 +74,12 @@ export default function CircleChatPage() {
         formData.append('fileName', file.name);
         formData.append('replyToId', replyTo?._id || '');
 
-        const res = await fetch(`/api/circles/${id}/messages`, {
+        const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}/messages`, {
           method: 'POST',
           body: formData
         });
+
+
         
         if (!res.ok) {
           const data = await res.json();
@@ -131,13 +137,15 @@ export default function CircleChatPage() {
   useEffect(() => {
     const fetchMuteStatus = async () => {
       try {
-        const res = await fetch(`/api/circles/${id}/mute`);
+        const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}/mute`);
         const data = await res.json();
         if (res.ok) setIsMuted(data.isMuted);
+
       } catch (err) {
         console.error(err);
       }
     };
+
     fetchMuteStatus();
   }, [id]);
 
@@ -145,10 +153,12 @@ export default function CircleChatPage() {
     const fetchData = async () => {
       try {
         const [meRes, circleRes, msgRes] = await Promise.all([
-          fetch('/api/auth/me'),
-          fetch(`/api/circles/${id}`),
-          fetch(`/api/circles/${id}/messages`)
+          hidayahFetch(`${HIDAYAH_API_URL}/api/auth/me`),
+          hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}`),
+          hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}/messages`)
         ]);
+
+
 
         const [meData, circleData, msgData] = await Promise.all([
           meRes.json(),
@@ -168,8 +178,9 @@ export default function CircleChatPage() {
         }
         if (msgRes.ok) setMessages(msgData.messages);
       } catch (err) {
-        console.error(err);
+        console.error("CircleChatPage data fetch error:", err);
       } finally {
+
         setIsLoading(false);
       }
     };
@@ -213,13 +224,15 @@ export default function CircleChatPage() {
       // If the message has a pending attachment (due to Pusher size limits), fetch full data
       if (data.imageUrl === 'PENDING' || data.fileUrl === 'PENDING') {
         try {
-          const res = await fetch(`/api/circles/${id}/messages/${data._id}`);
+          const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}/messages/${data._id}`);
           const resData = await res.json();
+
           if (res.ok) finalMessage = resData.message;
         } catch (err) {
           console.error("Error fetching full message attachment:", err);
         }
       }
+
 
       setMessages(prev => {
         if (prev.some(m => m._id === finalMessage._id)) {
@@ -323,10 +336,12 @@ export default function CircleChatPage() {
       formData.append('text', messageText);
       if (replyTo?._id) formData.append('replyToId', replyTo._id);
 
-      const res = await fetch(`/api/circles/${id}/messages`, {
+      const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}/messages`, {
         method: 'POST',
         body: formData
       });
+
+
       
       if (!res.ok) {
         const data = await res.json();
@@ -346,25 +361,29 @@ export default function CircleChatPage() {
     
     if (!isTyping) {
       setIsTyping(true);
-      fetch(`/api/circles/${id}/typing`, { 
+      hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}/typing`, { 
         method: 'POST', 
         body: JSON.stringify({ 
           isTyping: true, 
           username: currentUser?.username || currentUser?.email?.split('@')[0] 
         }) 
       });
+
+
     }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      fetch(`/api/circles/${id}/typing`, { 
+      hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}/typing`, { 
         method: 'POST', 
         body: JSON.stringify({ 
           isTyping: false, 
           username: currentUser?.username || currentUser?.email?.split('@')[0] 
         }) 
       });
+
+
     }, 2000);
   };
 
@@ -392,11 +411,13 @@ export default function CircleChatPage() {
     ));
 
     try {
-      const res = await fetch(`/api/circles/${id}/messages/${messageId}/react`, {
+      const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}/messages/${messageId}/react`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ emoji })
       });
+
+
       if (!res.ok) {
         // Revert on error
         setMessages(prev => prev.map(m => 
@@ -420,9 +441,11 @@ export default function CircleChatPage() {
   const handleDeleteMessage = async (messageId: string) => {
     if (!confirm("Are you sure you want to delete this reflection?")) return;
     try {
-      const res = await fetch(`/api/circles/${id}/messages/${messageId}`, {
+      const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}/messages/${messageId}`, {
+
         method: 'DELETE'
       });
+
       if (res.ok) {
         setMessages(prev => prev.filter(m => m._id !== messageId));
         setContextMenu(null);
@@ -435,8 +458,10 @@ export default function CircleChatPage() {
   const handleDeleteCircle = async () => {
     if (!confirm("Are you sure you want to DELETE this circle? This will erase everything forever.")) return;
     try {
-      const res = await fetch(`/api/circles/${id}`, { method: 'DELETE' });
+      const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/circles/${id}`, { method: 'DELETE' });
+
       if (res.ok) {
+
         router.push('/groups');
       } else {
         const data = await res.json();

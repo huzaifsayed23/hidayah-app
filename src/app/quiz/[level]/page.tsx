@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -6,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Check, X, Info, Trophy, RotateCcw, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { RewardPopup } from '@/components/RewardPopup';
+import { hidayahFetch } from '@/lib/api';
+
 
 interface Question {
   _id: string;
@@ -33,7 +36,7 @@ export default function QuizPage() {
   const [showRewardPopup, setShowRewardPopup] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/quiz/questions/${level}`)
+    hidayahFetch(`/api/quiz/questions/${level}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -41,6 +44,7 @@ export default function QuizPage() {
         }
         setIsLoading(false);
       })
+
       .catch(err => {
         console.error(err);
         setIsLoading(false);
@@ -71,7 +75,7 @@ export default function QuizPage() {
     setIsSubmitting(true);
     try {
       const levelNum = level === 'mixed' ? 6 : parseInt(level);
-      const response = await fetch('/api/quiz/progress', {
+      const response = await hidayahFetch('/api/quiz/progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -80,6 +84,7 @@ export default function QuizPage() {
           questionsCount: questions.length
         })
       });
+
       const data = await response.json();
       
       if (data.unlockedReward) {

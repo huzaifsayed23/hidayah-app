@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import Link from 'next/link';
 import { getPusherClient } from '@/lib/pusher';
+import { HIDAYAH_API_URL } from '@/lib/api';
+
 
 interface CommunityHeaderProps {
   userName: string;
@@ -23,8 +25,9 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
 
     const setupPusher = async () => {
       try {
-        const res = await fetch('/api/auth/me');
+        const res = await fetch(`${HIDAYAH_API_URL}/api/auth/me`);
         const userData = await res.json();
+
         
         if (userData.id) {
           const pusher = getPusherClient();
@@ -45,8 +48,9 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
           });
         }
       } catch (err) {
-        console.error("Pusher setup error:", err);
+        console.error("Pusher setup auth check error:", err);
       }
+
     };
 
     setupPusher();

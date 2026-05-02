@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOOD_PALETTES, generateMeshGradient } from '@/lib/gradients';
+import { hidayahFetch } from '@/lib/api';
+
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -17,12 +19,13 @@ export default function NotificationsPage() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('/api/notifications');
+      const res = await hidayahFetch('/api/notifications');
       const data = await res.json();
       if (res.ok) {
         setNotifications(data.notifications);
-        fetch('/api/notifications', { method: 'POST' });
+        hidayahFetch('/api/notifications', { method: 'POST' });
       }
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -37,11 +40,12 @@ export default function NotificationsPage() {
   const handleResponse = async (notificationId: string, action: 'accept' | 'deny') => {
     setIsResponding(notificationId);
     try {
-      const res = await fetch(`/api/notifications/${notificationId}/respond`, {
+      const res = await hidayahFetch(`/api/notifications/${notificationId}/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
       });
+
       if (res.ok) {
         setNotifications(prev => prev.map(n => 
           n._id === notificationId ? { ...n, status: action === 'accept' ? 'accepted' : 'denied' } : n

@@ -1,105 +1,112 @@
-import React from 'react';
-import { ArrowLeft, Calendar, PenTool, Trophy } from 'lucide-react';
+"use client";
+
+import React, { useState, useEffect, Suspense } from 'react';
+import { ArrowLeft, Calendar, PenTool, Trophy, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
-import Post from '@/models/Post';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import FeedCard from '@/components/community/FeedCard';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
 import { BADGES } from '@/constants/rewards';
 import ReportUserButton from '@/components/profile/ReportUserButton';
+import { HIDAYAH_API_URL, hidayahFetch } from '@/lib/api';
 
-export const dynamic = "force-dynamic";
 
-interface PublicProfilePageProps {
-  params: Promise<{ username: string }>;
-  searchParams: Promise<{ tab?: string }>;
-}
+function ProfileContent() {
+  const router = useRouter();
+  const { username } = useParams() as { username: string };
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get('tab') || "posts";
 
-export default async function PublicProfilePage({ params, searchParams }: PublicProfilePageProps) {
-  const { username } = await params;
-  
-  await dbConnect();
+  const [isLoading, setIsLoading] = useState(true);
+  const [userDoc, setUserDoc] = useState<any>(null);
+  const [displayPosts, setDisplayPosts] = useState<any[]>([]);
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [error, setError] = useState("");
 
-  // Try to find user by username or email prefix
-  let userDoc = await User.findOne({ username: username }).lean() as any;
-  if (!userDoc) {
-    // Try email prefix if no exact username match
-    userDoc = await User.findOne({ email: { $regex: `^${username}@`, $options: 'i' } }).lean() as any;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        // Fetch current user for context
+        const meRes = await hidayahFetch(`${HIDAYAH_API_URL}/api/auth/me`);
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          setCurrentUserId(meData.id || meData.userId);
+        }
+
+
+        // Fetch target user profile
+        const profileRes = await hidayahFetch(`${HIDAYAH_API_URL}/api/users/profile/${username}`);
+
+        
+        if (!profileRes.ok) {
+          // Try search if direct profile fails
+          const searchRes = await hidayahFetch(`${HIDAYAH_API_URL}/api/users/search?q=${username}`);
+
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const foundUser = searchData.users?.find((u: any) => u.username === username);
+            if (foundUser) {
+              setUserDoc(foundUser);
+              // Fetch their posts
+              const postsRes = await hidayahFetch(`${HIDAYAH_API_URL}/api/posts?userId=${foundUser._id}`);
+
+              if (postsRes.ok) {
+                const postsData = await postsRes.json();
+                setDisplayPosts(postsData.posts || []);
+              }
+            } else {
+              setError("User not found");
+            }
+          } else {
+            setError("User not found");
+          }
+        } else {
+          const profileData = await profileRes.json();
+          if (profileData) {
+            setUserDoc(profileData.user);
+            setDisplayPosts(profileData.posts || []);
+          }
+        }
+      } catch (err) {
+        console.error("Public profile fetch error:", err);
+        setError("Failed to load profile");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (username) fetchData();
+  }, [username]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--color-hidayah-gold)]" />
+      </div>
+    );
   }
 
-  if (!userDoc) {
+  if (error || !userDoc) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">User not found</h1>
+          <h1 className="text-2xl font-bold mb-4">{error || "User not found"}</h1>
           <Link href="/community" className="text-[var(--color-hidayah-gold)] font-bold">Back to Community</Link>
         </div>
       </div>
     );
   }
 
-  const userId = userDoc._id.toString();
-  
-  // Get current user to check if posts are saved
-  const cookieStore = await cookies();
-  const token = cookieStore.get('hidayah_token')?.value;
-  let currentUserId = "";
-  let userSavedPostsIds: string[] = [];
-
-  if (token) {
-    try {
-      const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production');
-      currentUserId = decoded.userId || decoded.email;
-      
-      const currentUserDoc = await User.findById(currentUserId).lean() as any;
-      if (currentUserDoc && currentUserDoc.savedPosts) {
-        userSavedPostsIds = currentUserDoc.savedPosts.map((id: any) => id.toString());
-      }
-    } catch(e) {}
-  }
-
-  const userPosts = await Post.find({ userId: userId }).sort({ createdAt: -1 }).lean();
-  
-  const displayPosts = userPosts.map((post: any) => ({
-    id: post._id.toString(),
-    author: post.authorName,
-    timeAgo: new Date(post.createdAt).toLocaleDateString(),
-    moodTag: post.moodTag,
-    content: post.content,
-    verse: post.verse || undefined,
-    ameenCount: post.ameenCount || 0,
-    commentCount: post.commentCount || 0,
-    ameens: post.ameens || [],
-    replies: (post.replies || []).map((r: any) => ({
-      author: r.author,
-      content: r.content,
-      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
-    })),
-    backdropVariant: post.backdropVariant,
-    themePalette: post.themePalette,
-    isSaved: userSavedPostsIds.includes(post._id.toString()),
-    userId: post.userId?.toString(),
-    authorImage: post.authorImage,
-    textColor: post.textColor,
-  }));
-
   const joinedDate = userDoc.createdAt ? new Date(userDoc.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently';
-
-  // Get tab from searchParams
-  const paramsSearch = await searchParams;
-  const currentTab = paramsSearch?.tab || "posts";
-
   const unlockedBadges = userDoc.unlockedBadges || [];
 
   return (
     <div className="min-h-screen pb-24 max-w-2xl mx-auto px-4 sm:px-6 pt-8">
       {/* Header */}
       <div className="flex items-center mb-10">
-        <Link href="/community" className="p-2.5 rounded-full hover:bg-[var(--color-hidayah-secondary)] transition-colors text-[var(--color-hidayah-dark)] opacity-70 hover:opacity-100 mr-4">
+        <button onClick={() => router.back()} className="p-2.5 rounded-full hover:bg-[var(--color-hidayah-secondary)] transition-colors text-[var(--color-hidayah-dark)] opacity-70 hover:opacity-100 mr-4">
           <ArrowLeft className="w-5 h-5" />
-        </Link>
+        </button>
         <h2 className="text-xl font-bold font-serif">Community Member</h2>
       </div>
 
@@ -135,10 +142,10 @@ export default async function PublicProfilePage({ params, searchParams }: Public
           </div>
         </div>
 
-        {currentUserId !== userId && (
+        {currentUserId !== userDoc._id && (
           <div className="mt-2">
             <ReportUserButton 
-              reportedUserId={userId} 
+              reportedUserId={userDoc._id} 
               username={userDoc.username || username} 
             />
           </div>
@@ -254,3 +261,16 @@ export default async function PublicProfilePage({ params, searchParams }: Public
     </div>
   );
 }
+
+export default function PublicProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--color-hidayah-gold)]" />
+      </div>
+    }>
+      <ProfileContent />
+    </Suspense>
+  );
+}
+

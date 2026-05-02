@@ -7,6 +7,8 @@ import {
   Loader2, AlertTriangle, ExternalLink, User, MessageSquare 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { hidayahFetch } from '@/lib/api';
+
 
 export default function AdminReportsPage() {
   const router = useRouter();
@@ -16,10 +18,11 @@ export default function AdminReportsPage() {
 
   const fetchReports = async () => {
     try {
-      const res = await fetch('/api/reports');
+      const res = await hidayahFetch('/api/reports');
       if (res.ok) {
         const data = await res.json();
         setReports(data.reports);
+
       } else {
         // Redirect if not admin
         router.push('/dashboard');
@@ -38,11 +41,12 @@ export default function AdminReportsPage() {
   const handleAction = async (reportId: string, action: 'delete' | 'dismiss' | 'warn' | 'suspend') => {
     setActionId(reportId);
     try {
-      const res = await fetch(`/api/reports/${reportId}`, {
+      const res = await hidayahFetch(`/api/reports/${reportId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
       });
+
 
       if (res.ok) {
         setReports(prev => prev.filter(r => r._id !== reportId));

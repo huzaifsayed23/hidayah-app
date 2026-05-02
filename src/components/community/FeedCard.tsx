@@ -229,7 +229,7 @@ export default function FeedCard({
         {/* Content */}
         <div className={compact ? 'space-y-2 sm:space-y-3' : 'space-y-5'}>
           {verse && (
-            <div className={`max-h-[120px] sm:max-h-[180px] overflow-y-auto custom-scrollbar border-l-2 pl-3 py-0.5 md:pl-4 md:py-1 space-y-1 md:space-y-3 ${hasGradient ? 'border-white/50' : 'border-[var(--color-hidayah-gold)]'}`}>
+            <div className={`border-l-2 pl-3 py-0.5 md:pl-4 md:py-1 space-y-1 md:space-y-3 ${hasGradient ? 'border-white/50' : 'border-[var(--color-hidayah-gold)]'}`}>
               <p 
                 className={`font-arabic ${compact ? 'text-sm sm:text-base' : 'text-xl md:text-2xl'} text-right leading-relaxed allow-select ${savedTextColor ? '' : textColor}`} 
                 style={{
@@ -261,7 +261,7 @@ export default function FeedCard({
               <HadithCard hadith={hadith} isLightText={isLightText} transparent={hasGradient} customTextColor={savedTextColor} />
             </div>
           )}
-          <div className={`${compact ? 'max-h-[80px]' : 'max-h-[350px]'} overflow-y-auto custom-scrollbar pr-1`}>
+          <div className="pr-1">
             <p 
               className={`${compact ? 'text-[11px] sm:text-xs md:text-sm line-clamp-6' : 'text-lg md:text-xl'} allow-select ${savedTextColor ? '' : textColor}`}
               style={{
@@ -311,7 +311,7 @@ export default function FeedCard({
           {!compact && showReplies && (
             <div className={`mt-4 pt-4 border-t ${borderCol} space-y-4`}>
               {repliesList.length > 0 ? (
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
+                <div className="space-y-3 pr-2">
                   {(isRepliesExpanded ? repliesList : repliesList.slice(-1)).map((reply: any, i: number) => (
                     <div key={i} className={`p-3 rounded-xl ${isLightText ? 'bg-black/20' : 'bg-[var(--color-hidayah-primary)]'}`}>
                       <div className="flex justify-between items-start mb-1">

@@ -1,5 +1,7 @@
 const BASE_URL = "https://api.quran.com/api/v4";
 const FOUNDATION_BASE_URL = "https://apis.quran.foundation/content/api/v4";
+export const HIDAYAH_API_URL = "";
+
 
 export interface Juz {
   id: number;
@@ -94,3 +96,47 @@ export async function getVersesByChapter(chapterId: number): Promise<Verse[]> {
 
   return mergedVerses;
 }
+
+/**
+ * Standard fetch wrapper that attaches auth token via both cookies AND
+ * Authorization header (from localStorage) for maximum localhost reliability.
+ */
+export async function hidayahFetch(url: string, options: RequestInit = {}) {
+  // Resolve relative URLs
+  const fullUrl = url.startsWith('/') ? url : `/${url}`;
+
+  // Build headers with auth token from localStorage (if available)
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> || {}),
+  };
+
+  // Attach token from localStorage as Bearer header (works even when cookies are blocked)
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('hidayah_token');
+    if (token && !headers['Authorization']) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
+  const response = await fetch(fullUrl, {
+    ...options,
+    headers,
+    credentials: 'include', // Always send cookies too
+  });
+
+  // If this was a successful auth request, persist the token to localStorage
+  if (response.ok && typeof window !== 'undefined') {
+    const cloned = response.clone();
+    try {
+      const data = await cloned.json();
+      if (data.token) {
+        localStorage.setItem('hidayah_token', data.token);
+      }
+    } catch {
+      // Not a JSON response, ignore
+    }
+  }
+
+  return response;
+}
+

@@ -63,7 +63,7 @@ export default function HadithCard({
       </div>
 
       {/* English Content */}
-      <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar overscroll-contain touch-auto">
+      <div className="pr-2 touch-auto">
         <p 
           className={`font-serif text-lg sm:text-xl leading-[1.8] allow-select ${customTextColor ? '' : (isLightText ? 'text-white/80' : 'text-[var(--color-hidayah-dark)]/80')} text-justify pb-4`}
           style={shineStyle}

@@ -1,46 +1,61 @@
+"use client";
+
 import Link from "next/link";
-import { BookOpen, Search, Bookmark, History, ArrowRight, ArrowLeft } from "lucide-react";
-import { getJuzs } from "@/lib/api";
-import dbConnect from "@/lib/mongodb";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
+import { BookOpen, Search, Bookmark, History, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
+import { getJuzs, Juz, HIDAYAH_API_URL, hidayahFetch } from "@/lib/api";
+import { useState, useEffect } from "react";
+
 import PageJumpInput from "@/components/quran/PageJumpInput";
+import BottomNav from "@/components/BottomNav";
 
 const JUZ_PAGES = [
   1, 22, 42, 62, 82, 102, 122, 142, 162, 182, 202, 222, 242, 262, 282, 302, 322,
   342, 362, 382, 402, 422, 442, 462, 482, 502, 522, 542, 562, 582,
 ];
 
-export default async function QuranPage() {
-  const juzsData = await getJuzs();
-  const allJuzs = Array.from(new Map(juzsData.map(item => [item.juz_number, item])).values())
-    .sort((a, b) => a.juz_number - b.juz_number);
+export default function QuranPage() {
+  const [juzs, setJuzs] = useState<Juz[]>([]);
+  const [lastReadPage, setLastReadPage] = useState(1);
+  const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  let lastReadPage = 1;
-  let bookmarks = [];
-  let currentUserId = "";
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const juzsData = await getJuzs();
+        const allJuzs = Array.from(new Map(juzsData.map(item => [item.juz_number, item])).values())
+          .sort((a, b) => a.juz_number - b.juz_number);
+        setJuzs(allJuzs);
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get('hidayah_token')?.value;
+        // Fetch user data
+        const meRes = await hidayahFetch(`${HIDAYAH_API_URL}/api/auth/me`);
+        if (meRes.ok) {
+          const profileRes = await hidayahFetch(`${HIDAYAH_API_URL}/api/users/profile`);
+          if (profileRes.ok) {
 
-  if (token) {
-    try {
-      const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-      const decoded: any = jwt.verify(token, secret);
-      currentUserId = decoded.userId;
+            const profileData = await profileRes.json();
+            setLastReadPage(profileData.user.lastReadPage || 1);
+            setBookmarks(profileData.user.bookmarks || []);
+          }
+        }
 
-      await dbConnect();
-      const User = (await import('@/models/User')).default;
-      const userDoc = await User.findById(currentUserId).lean() as any;
-      if (userDoc) {
-        lastReadPage = userDoc.lastReadPage || 1;
-        bookmarks = userDoc.bookmarks || [];
+      } catch (e) {
+        console.error("Quran page data fetch error:", e);
+      } finally {
+
+        setIsLoading(false);
       }
-    } catch(e) {}
+    };
+    fetchData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
+        <Loader2 className="w-8 h-8 animate-spin text-hidayah-gold" />
+      </div>
+    );
   }
-  // Ensure uniqueness and sorting
-  const juzs = Array.from(new Map(allJuzs.map(item => [item.juz_number, item])).values())
-    .sort((a, b) => a.juz_number - b.juz_number);
 
   return (
     <main className="min-h-screen bg-[var(--color-hidayah-primary)] text-[var(--color-hidayah-dark)] p-6 sm:p-12 transition-colors duration-500">
@@ -102,7 +117,7 @@ export default async function QuranPage() {
           <BookOpen className="w-4 h-4" /> Browse by Juz
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 mb-16">
-          {allJuzs.map((juz) => {
+          {juzs.map((juz) => {
             const startPage = JUZ_PAGES[juz.juz_number - 1] || 1;
 
             return (

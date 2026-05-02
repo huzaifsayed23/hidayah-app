@@ -5,6 +5,8 @@ import { Users, Plus, Search, MessageSquare, Globe, Lock, Loader2, Bell, Trash2,
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { hidayahFetch } from '@/lib/api';
+
 
 export default function CirclesPage() {
   const router = useRouter();
@@ -20,10 +22,11 @@ export default function CirclesPage() {
 
   useEffect(() => {
     const fetchMe = async () => {
-      const res = await fetch('/api/auth/me');
+      const res = await hidayahFetch('/api/auth/me');
       const data = await res.json();
       if (res.ok) setCurrentUser(data);
     };
+
     fetchMe();
   }, []);
 
@@ -34,11 +37,12 @@ export default function CirclesPage() {
   const fetchCircles = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/circles?filter=${activeTab === 'my' ? 'mine' : 'discover'}`);
+      const res = await hidayahFetch(`/api/circles?filter=${activeTab === 'my' ? 'mine' : 'discover'}`);
       const data = await res.json();
       if (res.ok) {
         setCircles(data.circles);
       }
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -51,7 +55,8 @@ export default function CirclesPage() {
     e.stopPropagation();
     setJoiningId(id);
     try {
-      const res = await fetch(`/api/circles/${id}/join`, { method: 'POST' });
+      const res = await hidayahFetch(`/api/circles/${id}/join`, { method: 'POST' });
+
       if (res.ok) {
         // Remove from discover, maybe move to "my" or just show success
         setCircles(prev => prev.filter(c => c._id !== id));
@@ -70,7 +75,8 @@ export default function CirclesPage() {
   const handleDeleteCircle = async (id: string) => {
     if (!confirm("Are you sure you want to DELETE this circle? This action cannot be undone.")) return;
     try {
-      const res = await fetch(`/api/circles/${id}`, { method: 'DELETE' });
+      const res = await hidayahFetch(`/api/circles/${id}`, { method: 'DELETE' });
+
       if (res.ok) {
         setCircles(prev => prev.filter(c => c._id !== id));
         setContextMenu(null);
@@ -86,7 +92,8 @@ export default function CirclesPage() {
   const handleLeaveCircle = async (id: string) => {
     if (!confirm("Are you sure you want to leave this circle?")) return;
     try {
-      const res = await fetch(`/api/circles/${id}/members`, { method: 'DELETE' });
+      const res = await hidayahFetch(`/api/circles/${id}/members`, { method: 'DELETE' });
+
       if (res.ok) {
         setCircles(prev => prev.filter(c => c._id !== id));
         setContextMenu(null);

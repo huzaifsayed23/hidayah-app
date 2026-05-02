@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ShieldCheck, LogOut, CheckCircle2 } from "lucide-react";
+import { hidayahFetch } from "@/lib/api";
 import { Logo } from "@/components/Logo";
+
 
 export default function AgreementPage() {
   const router = useRouter();
@@ -13,7 +15,7 @@ export default function AgreementPage() {
   const handleAgree = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/accept-terms", {
+      const res = await hidayahFetch("/api/auth/accept-terms", {
         method: "POST",
       });
       if (res.ok) {
@@ -30,12 +32,13 @@ export default function AgreementPage() {
 
   const handleExit = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await hidayahFetch("/api/auth/logout", { method: "POST" });
       router.push("/auth");
     } catch (error) {
       router.push("/auth");
     }
   };
+
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-[var(--color-hidayah-primary)] selection:bg-hidayah-gold/20">

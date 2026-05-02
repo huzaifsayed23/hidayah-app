@@ -1,5 +1,7 @@
 import PusherServer from 'pusher';
 import PusherClient from 'pusher-js';
+import { HIDAYAH_API_URL } from './api';
+
 
 // Server-side pusher instance
 export const pusherServer = new PusherServer({
@@ -20,11 +22,13 @@ export const getPusherClient = () => {
     pusherClient = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
       userAuthentication: {
-        endpoint: '/api/pusher/auth',
+        endpoint: `${HIDAYAH_API_URL}/api/pusher/auth`,
+
         transport: 'ajax',
       },
       channelAuthorization: {
-        endpoint: '/api/pusher/auth',
+        endpoint: `${HIDAYAH_API_URL}/api/pusher/auth`,
+
         transport: 'ajax',
       }
     });

@@ -1,115 +1,87 @@
-import React from 'react';
-import { Bookmark, Edit3, ArrowLeft, Trophy, Map } from 'lucide-react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { Bookmark, Edit3, ArrowLeft, Trophy, Map, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import FeedCard from '@/components/community/FeedCard';
 import ProfileMenu from '@/components/profile/ProfileMenu';
 import ProfileImageUpdate from '@/components/profile/ProfileImageUpdate';
 import EditableBio from '@/components/profile/EditableBio';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
-import dbConnect from '@/lib/mongodb';
-import Post from '@/models/Post';
-import { MOOD_PALETTES } from '@/lib/gradients';
-import { BADGES, REFLECTION_THEMES } from '@/constants/rewards';
-import { NatureBackground } from '@/components/NatureBackground';
+import { BADGES } from '@/constants/rewards';
+
 import BottomNav from '@/components/BottomNav';
+import { HIDAYAH_API_URL, hidayahFetch } from '@/lib/api';
 
-export const dynamic = "force-dynamic";
 
-export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab } = await searchParams;
-  const currentTab = tab || "posts";
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get('hidayah_token')?.value;
-  let userName = "Guest";
-  let userInitial = "G";
-  let userEmail = "";
-  let userId = "";
-  let currentUserId = "";
-  let userImage = null;
-  let userBio = "";
-  let joinedAt = null;
-  let unlockedBadges: string[] = [];
-  let unlockedBackgrounds: string[] = [];
-  let quizProgress: any = null;
+export default function ProfilePage({ searchParams }: { searchParams: React.PropsWithChildren<{ tab?: string }> | any }) {
+  const [currentTab, setCurrentTab] = useState("posts");
+  const [userData, setUserData] = useState<any>(null);
+  const [displayPosts, setDisplayPosts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (token) {
-    try {
-      const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production');
-      userEmail = decoded.email;
-      userId = decoded.userId;
-      currentUserId = decoded.userId || decoded.email;
-      if (decoded.username) {
-        userName = `@${decoded.username}`;
-        userInitial = decoded.username.charAt(0).toUpperCase();
-      } else {
-        const prefix = decoded.email.split('@')[0];
-        userName = prefix.charAt(0).toUpperCase() + prefix.slice(1).replace(/[0-9]/g, '');
-        userInitial = userName.charAt(0).toUpperCase();
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/auth/me`);
+
+        if (res.ok) {
+          // Fetch full profile info
+          const profileRes = await hidayahFetch(`${HIDAYAH_API_URL}/api/users/profile`);
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            setUserData(profileData.user);
+            
+            // Get posts
+            const tab = new URLSearchParams(window.location.search).get('tab') || 'posts';
+            setCurrentTab(tab);
+            
+            const postsRes = await hidayahFetch(`${HIDAYAH_API_URL}/api/posts?userId=${profileData.user._id}&tab=${tab}`);
+
+            if (postsRes.ok) {
+              const postsData = await postsRes.json();
+              setDisplayPosts(postsData.posts);
+            }
+          }
+        }
+
+
+      } catch (e) {
+        console.error("Profile page data fetch error:", e);
+      } finally {
+
+        setIsLoading(false);
       }
-    } catch(e) {}
+    };
+    fetchData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
+        <Loader2 className="w-8 h-8 animate-spin text-hidayah-gold" />
+      </div>
+    );
   }
 
-  await dbConnect();
-  
-  // Need to dynamically import User to query savedPosts if not already imported
-  const User = (await import('@/models/User')).default;
-  
-  let userSavedPostsIds: string[] = [];
-  if (currentUserId && currentUserId !== 'admin@gmail.com') {
-    const userDoc = await User.findById(currentUserId).lean() as any;
-    if (userDoc) {
-      userImage = userDoc.image;
-      if (userDoc.username) {
-        userName = `@${userDoc.username}`;
-        userInitial = userDoc.username.charAt(0).toUpperCase();
-      }
-      userBio = userDoc.bio || "Seeking knowledge and patience. Striving to be better than I was yesterday.";
-      joinedAt = userDoc.createdAt;
-      if (userDoc.savedPosts) {
-        userSavedPostsIds = userDoc.savedPosts.map((id: any) => id.toString());
-      }
-      unlockedBadges = userDoc.unlockedBadges || [];
-      unlockedBackgrounds = userDoc.unlockedBackgrounds || [];
+  const user = userData || {
+    username: "Guest",
+    bio: "Seeking knowledge and patience.",
+    createdAt: new Date(),
+    unlockedBadges: [],
+    unlockedBackgrounds: []
+  };
 
-      const QuizProgress = (await import('@/models/QuizProgress')).default;
-      quizProgress = await QuizProgress.findOne({ userId: currentUserId }).lean();
-    }
-  }
+  const userName = user.username ? `@${user.username}` : "Guest";
+  const userInitial = user.username ? user.username.charAt(0).toUpperCase() : "G";
+  const joinedDate = new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  let userPosts = [];
-  if (currentTab === "saved") {
-    userPosts = await Post.find({ _id: { $in: userSavedPostsIds } }).sort({ createdAt: -1 }).lean();
-  } else {
-    userPosts = await Post.find({ userId: currentUserId }).sort({ createdAt: -1 }).lean();
-  }
 
-  const displayPosts = userPosts.map((post: any) => ({
-    id: post._id.toString(),
-    author: post.authorName,
-    timeAgo: new Date(post.createdAt).toLocaleDateString(),
-    moodTag: post.moodTag,
-    content: post.content,
-    verse: post.verse || undefined,
-    ameenCount: post.ameenCount || 0,
-    commentCount: post.commentCount || 0,
-    ameens: post.ameens || [],
-    replies: (post.replies || []).map((r: any) => ({
-      author: r.author,
-      content: r.content,
-      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
-    })),
-    backdropVariant: post.backdropVariant,
-    themePalette: post.themePalette,
-    isSaved: userSavedPostsIds.includes(post._id.toString()),
-    userId: post.userId?.toString(),
-    authorImage: post.authorImage,
-    reflectionThemeId: post.reflectionThemeId,
-    textColor: post.textColor,
-  }));
+  const userImage = user.image;
+  const userBio = user.bio || "Seeking knowledge and patience.";
+  const unlockedBadges = user.unlockedBadges || [];
+  const currentUserId = user._id;
 
-  const joinedDate = joinedAt ? new Date(joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently';
 
   return (
     <div className="min-h-screen pb-24 max-w-2xl mx-auto px-4 sm:px-6 pt-8">
@@ -244,13 +216,14 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
               <div className="grid grid-cols-2 gap-4 sm:gap-6 md:gap-8">
                 {displayPosts.map((post: any) => (
                   <FeedCard 
-                    key={post.id} 
+                    key={post._id || post.id} 
                     {...post} 
                     compact={true}
                     currentUserId={currentUserId}
                     showDelete={currentTab === "posts"}
                   />
                 ))}
+
               </div>
             ) : (
               <div className="py-12 text-center text-[var(--color-hidayah-dark)]/50 bg-[var(--color-hidayah-secondary)] rounded-3xl border border-[var(--color-hidayah-border)]/50">

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Search, X, Users, Check, Loader2, Info, Lock, Globe, Plus, UserPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { hidayahFetch } from '@/lib/api';
+
 
 export default function CreateCirclePage() {
   const router = useRouter();
@@ -40,7 +42,8 @@ export default function CreateCirclePage() {
       }
       setIsSearching(true);
       try {
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(memberQuery)}`);
+        const res = await hidayahFetch(`/api/users/search?q=${encodeURIComponent(memberQuery)}`);
+
         const data = await res.json();
         if (res.ok) {
           const filtered = data.users.filter((u: any) => 
@@ -84,7 +87,8 @@ export default function CreateCirclePage() {
     setError("");
 
     try {
-      const res = await fetch('/api/circles', {
+      const res = await hidayahFetch('/api/circles', {
+
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

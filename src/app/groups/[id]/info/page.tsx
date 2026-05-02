@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -10,6 +11,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import { getPusherClient } from '@/lib/pusher';
+import { hidayahFetch } from '@/lib/api';
+
 
 export default function CircleInfoPage() {
   const router = useRouter();
@@ -59,10 +62,11 @@ export default function CircleInfoPage() {
 
   useEffect(() => {
     const fetchMe = async () => {
-      const meRes = await fetch('/api/auth/me');
+      const meRes = await hidayahFetch('/api/auth/me');
       const meData = await meRes.json();
       if (meRes.ok) setCurrentUser(meData);
     };
+
     fetchMe();
     fetchCircle();
     fetchMuteStatus();
@@ -70,9 +74,10 @@ export default function CircleInfoPage() {
 
   const fetchMuteStatus = async () => {
     try {
-      const res = await fetch(`/api/circles/${id}/mute`);
+      const res = await hidayahFetch(`/api/circles/${id}/mute`);
       const data = await res.json();
       if (res.ok) setIsMuted(data.isMuted);
+
     } catch (err) {
       console.error(err);
     }
@@ -80,9 +85,10 @@ export default function CircleInfoPage() {
 
   const fetchCircle = async () => {
     try {
-      const res = await fetch(`/api/circles/${id}`);
+      const res = await hidayahFetch(`/api/circles/${id}`);
       const data = await res.json();
       if (res.ok) setCircle(data.circle);
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -98,9 +104,10 @@ export default function CircleInfoPage() {
       }
       setIsSearching(true);
       try {
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`);
+        const res = await hidayahFetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`);
         const data = await res.json();
         if (res.ok) {
+
           const filtered = data.users.filter((u: any) => 
             !circle?.memberIds?.some((m: any) => m._id === u._id)
           );
@@ -119,9 +126,10 @@ export default function CircleInfoPage() {
 
   const handleMuteToggle = async () => {
     try {
-      const res = await fetch(`/api/circles/${id}/mute`, { method: 'POST' });
+      const res = await hidayahFetch(`/api/circles/${id}/mute`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
+
         setIsMuted(data.isMuted);
         // Request notification permission if unmuting
         if (!data.isMuted && typeof window !== 'undefined' && 'Notification' in window) {
@@ -143,11 +151,12 @@ export default function CircleInfoPage() {
   const handleAddMember = async (userId: string) => {
     if (invitedUserIds.includes(userId)) return;
     try {
-      const res = await fetch(`/api/circles/${id}/members`, {
+      const res = await hidayahFetch(`/api/circles/${id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })
       });
+
       if (res.ok) {
         setInvitedUserIds(prev => [...prev, userId]);
       } else {
@@ -163,9 +172,10 @@ export default function CircleInfoPage() {
     if (!confirm("Are you sure you want to leave this circle?")) return;
     setIsLeaving(true);
     try {
-      const res = await fetch(`/api/circles/${id}/members`, {
+      const res = await hidayahFetch(`/api/circles/${id}/members`, {
         method: 'DELETE'
       });
+
       if (res.ok) {
         router.push('/groups');
       } else {
@@ -183,9 +193,10 @@ export default function CircleInfoPage() {
     if (!confirm("Are you sure you want to DELETE this circle? This will erase all reflections and data forever.")) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/circles/${id}`, {
+      const res = await hidayahFetch(`/api/circles/${id}`, {
         method: 'DELETE'
       });
+
       if (res.ok) {
         router.push('/groups');
       } else {
@@ -202,11 +213,12 @@ export default function CircleInfoPage() {
   const handleRemoveMember = async (targetUserId: string) => {
     if (!confirm("Remove this member from the circle?")) return;
     try {
-      const res = await fetch(`/api/circles/${id}/members`, {
+      const res = await hidayahFetch(`/api/circles/${id}/members`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUserId })
       });
+
       if (res.ok) {
         setCircle((prev: any) => ({
           ...prev,
@@ -224,11 +236,12 @@ export default function CircleInfoPage() {
 
   const handleToggleAdmin = async (targetUserId: string) => {
     try {
-      const res = await fetch(`/api/circles/${id}/admins`, {
+      const res = await hidayahFetch(`/api/circles/${id}/admins`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUserId })
       });
+
       if (res.ok) {
         const data = await res.json();
         setCircle((prev: any) => {

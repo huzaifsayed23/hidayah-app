@@ -1,9 +1,21 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+    },
+  });
+}
 
 export async function POST(req: Request) {
   try {
@@ -14,7 +26,12 @@ export async function POST(req: Request) {
     if (!email || !password) {
       return NextResponse.json(
         { message: 'Email and password are required' },
-        { status: 400 }
+        {
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       );
     }
 
@@ -23,14 +40,24 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json(
         { message: 'Invalid credentials' },
-        { status: 401 }
+        {
+          status: 401,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       );
     }
 
     if (user.isSuspended) {
       return NextResponse.json(
         { message: 'Your account has been suspended for community guideline violations.' },
-        { status: 403 }
+        {
+          status: 403,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       );
     }
 
@@ -38,7 +65,12 @@ export async function POST(req: Request) {
     if (!isMatch) {
       return NextResponse.json(
         { message: 'Invalid credentials' },
-        { status: 401 }
+        {
+          status: 401,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       );
     }
 
@@ -49,24 +81,38 @@ export async function POST(req: Request) {
       { expiresIn: '7d' }
     );
 
+    const isProduction = process.env.NODE_ENV === 'production';
     const cookieStore = await cookies();
     cookieStore.set('hidayah_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 60 * 60 * 24 * 7, // 1 week
       path: '/',
     });
 
+
     return NextResponse.json(
-      { message: 'Logged in successfully', userId: user._id, acceptedTerms: user.acceptedTerms },
-      { status: 200 }
+      { message: 'Logged in successfully', userId: user._id, acceptedTerms: user.acceptedTerms, token },
+      {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
     );
     
   } catch (error: any) {
     console.error('Login error:', error);
     return NextResponse.json(
       { message: 'Internal server error' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
     );
   }
 }
+

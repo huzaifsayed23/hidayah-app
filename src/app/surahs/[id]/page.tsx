@@ -1,11 +1,13 @@
 "use client";
+export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowLeft, Bookmark, BookmarkCheck, Settings, Loader2, Info } from "lucide-react";
-import { getChapters, getVersesByChapter, Chapter, Verse } from "@/lib/api";
+import { getChapters, getVersesByChapter, Chapter, Verse, hidayahFetch } from "@/lib/api";
+
 
 export default function SurahReaderPage() {
   const params = useParams();
@@ -32,7 +34,7 @@ export default function SurahReaderPage() {
         setVerses(versesData);
         
         // Fetch bookmark status from API
-        const res = await fetch("/api/surahs/bookmark");
+        const res = await hidayahFetch("/api/surahs/bookmark");
         if (res.ok) {
           const bookmarks = await res.json();
           const isMarked = bookmarks.some((b: any) => b.surahId === parseInt(id));
@@ -44,6 +46,7 @@ export default function SurahReaderPage() {
             console.log("Last read ayah:", currentBookmark.lastAyahRead);
           }
         }
+
       } catch (error) {
         console.error("Error loading Surah:", error);
       } finally {
@@ -56,18 +59,19 @@ export default function SurahReaderPage() {
   const toggleBookmark = async () => {
     try {
       if (isBookmarked) {
-        await fetch("/api/surahs/bookmark", {
+        await hidayahFetch("/api/surahs/bookmark", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ surahId: parseInt(id) })
         });
       } else {
-        await fetch("/api/surahs/bookmark", {
+        await hidayahFetch("/api/surahs/bookmark", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ surahId: parseInt(id), lastAyahRead: 1 })
         });
       }
+
       setIsBookmarked(!isBookmarked);
     } catch (error) {
       console.error("Error toggling bookmark:", error);
@@ -76,12 +80,13 @@ export default function SurahReaderPage() {
 
   const updateProgress = async (ayahNumber: number) => {
     try {
-      await fetch("/api/surahs/bookmark", {
+      await hidayahFetch("/api/surahs/bookmark", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ surahId: parseInt(id), lastAyahRead: ayahNumber })
       });
     } catch (error) {
+
       // Silent error for progress update
     }
   };

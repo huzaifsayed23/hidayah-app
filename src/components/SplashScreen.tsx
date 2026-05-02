@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
+import { HIDAYAH_API_URL, hidayahFetch } from "@/lib/api";
+
 
 export function SplashScreen() {
   const router = useRouter();
@@ -26,24 +28,26 @@ export function SplashScreen() {
       // 3-second timer
       const timer = setTimeout(async () => {
         try {
-          const res = await fetch("/api/auth/me");
+          const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/auth/me`);
           const data = await res.json();
+
           
           setIsVisible(false);
           
           // Cross-Fade transition: Delay for exit animation to complete
           setTimeout(() => {
-            if (data.authenticated) {
+            if (res.ok && data.authenticated) {
               router.push("/dashboard");
             } else {
               router.push("/auth");
             }
           }, 1000);
         } catch (error) {
-          console.error("Auth check failed:", error);
+          console.error("Auth check failed detailed error:", error);
           setIsVisible(false);
           setTimeout(() => router.push("/auth"), 1000);
         }
+
       }, 3000);
 
       return () => clearTimeout(timer);
@@ -58,10 +62,11 @@ export function SplashScreen() {
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 1, ease: "easeInOut" }}
+
           className={cn(
             "fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden transition-colors duration-700",
             isDark ? "bg-[#0a0a0a]" : "bg-[#F5F5DC]"
@@ -76,22 +81,11 @@ export function SplashScreen() {
           )} />
 
           {/* Main Logo Container */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ 
-              opacity: 1, 
-              scale: [1, 1.02, 0.98, 1],
-            }}
-            transition={{ 
-              opacity: { duration: 1, ease: "easeOut" },
-              scale: { 
-                duration: 3, 
-                repeat: Infinity, 
-                ease: "easeInOut",
-                times: [0, 0.5, 0.75, 1]
-              }
-            }}
+          <div
             className="relative flex flex-col items-center"
+            style={{ 
+              animation: 'fadeInScale 1.2s ease-out forwards',
+            }}
           >
             {/* Logo with Shimmer */}
             <div className="relative group">
@@ -104,68 +98,84 @@ export function SplashScreen() {
               />
               
               {/* Shimmer Light Streak */}
-              <motion.div 
-                initial={{ x: "-200%", skewX: -20 }}
-                animate={{ x: "200%" }}
-                transition={{ 
-                  duration: 1.5, 
-                  delay: 1, 
-                  ease: "easeInOut" 
-                }}
+              <div 
                 className={cn(
-                  "absolute inset-0 pointer-events-none",
+                  "absolute inset-0 pointer-events-none overflow-hidden",
                   isDark 
                     ? "bg-gradient-to-r from-transparent via-white/20 to-transparent" 
                     : "bg-gradient-to-r from-transparent via-white/40 to-transparent"
                 )}
+                style={{
+                  width: '200%',
+                  transform: 'skewX(-20deg)',
+                  animation: 'shimmer 2s infinite linear',
+                  animationDelay: '1s'
+                }}
               />
             </div>
 
             {/* Typography */}
-            <motion.h1
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, delay: 0.5 }}
+            <h1
               className={cn(
                 "mt-8 font-serif tracking-[12px] sm:tracking-[18px] font-light uppercase text-center transition-colors duration-700",
                 isDark ? "text-[#D4AF37] text-2xl sm:text-4xl" : "text-[#2E2A26] text-3xl sm:text-5xl",
                 isDark ? "drop-shadow-[0_0_10px_rgba(212,175,55,0.2)]" : "drop-shadow-[0_2px_4px_rgba(46,42,38,0.1)]"
               )}
-              style={{ fontFamily: "'Playfair Display', serif" }}
+              style={{ fontFamily: "'Playfair Display', serif", animation: 'fadeIn 1.5s ease-out 0.5s both' }}
             >
               HIDAYAH
-            </motion.h1>
+            </h1>
 
             {/* Tarteel Style Subtitle */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: isDark ? 0.4 : 0.6 }}
-              transition={{ duration: 1.2, delay: 1.2 }}
+            <p
               className={cn(
                 "mt-4 text-[11px] sm:text-xs tracking-[5px] font-medium uppercase transition-colors duration-700",
-                isDark ? "text-[#D4AF37]" : "text-[#2E2A26]"
+                isDark ? "text-[#D4AF37] opacity-40" : "text-[#2E2A26] opacity-60"
               )}
+              style={{ animation: 'fadeIn 1.5s ease-out 1.2s both' }}
             >
               THE DIGITAL SANCTUARY
-            </motion.p>
-          </motion.div>
+            </p>
+          </div>
 
           {/* Seamless Transition Loading Indicator */}
           <div className={cn(
             "absolute bottom-16 w-40 h-[1px] rounded-full overflow-hidden transition-colors duration-700",
             isDark ? "bg-[#D4AF37]/10" : "bg-[#2E2A26]/10"
           )}>
-            <motion.div 
-              initial={{ x: "-100%" }}
-              animate={{ x: "0%" }}
-              transition={{ duration: 3, ease: "linear" }}
+            <div 
               className={cn(
                 "h-full w-full transition-colors duration-700",
                 isDark ? "bg-[#D4AF37]/40" : "bg-[#B8860B]/40"
               )}
+              style={{
+                transform: 'translateX(-100%)',
+                animation: 'loadingProgress 3s linear forwards'
+              }}
             />
           </div>
+
+          <style>{`
+            @keyframes fadeInScale {
+              from { opacity: 0; transform: scale(0.9); }
+              to { opacity: 1; transform: scale(1); }
+            }
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes shimmer {
+              0% { transform: translateX(-150%) skewX(-20deg); }
+              100% { transform: translateX(150%) skewX(-20deg); }
+            }
+            @keyframes loadingProgress {
+              from { transform: translateX(-100%); }
+              to { transform: translateX(0%); }
+            }
+          `}</style>
         </motion.div>
+
+
       )}
     </AnimatePresence>
   );

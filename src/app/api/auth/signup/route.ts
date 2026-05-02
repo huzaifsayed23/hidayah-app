@@ -1,9 +1,21 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+    },
+  });
+}
 
 export async function POST(req: Request) {
   try {
@@ -14,7 +26,12 @@ export async function POST(req: Request) {
     if (!username || !email || !password || password.length < 6) {
       return NextResponse.json(
         { message: 'Invalid credentials or missing fields' },
-        { status: 400 }
+        {
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       );
     }
 
@@ -22,7 +39,12 @@ export async function POST(req: Request) {
     if (existingEmail) {
       return NextResponse.json(
         { message: 'Email already exists' },
-        { status: 409 }
+        {
+          status: 409,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       );
     }
 
@@ -30,7 +52,12 @@ export async function POST(req: Request) {
     if (existingUsername) {
       return NextResponse.json(
         { message: 'That username already exists. Please try a different username.' },
-        { status: 409 }
+        {
+          status: 409,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       );
     }
 
@@ -50,24 +77,38 @@ export async function POST(req: Request) {
       { expiresIn: '7d' }
     );
 
+    const isProduction = process.env.NODE_ENV === 'production';
     const cookieStore = await cookies();
     cookieStore.set('hidayah_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 60 * 60 * 24 * 7, // 1 week
       path: '/',
     });
 
+
     return NextResponse.json(
-      { message: 'Account created successfully', userId: user._id, acceptedTerms: user.acceptedTerms },
-      { status: 201 }
+      { message: 'Account created successfully', userId: user._id, acceptedTerms: user.acceptedTerms, token },
+      {
+        status: 201,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
     );
     
   } catch (error: any) {
     console.error('Signup error:', error);
     return NextResponse.json(
       { message: 'Internal server error' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
     );
   }
 }
+

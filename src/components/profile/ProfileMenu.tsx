@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTheme } from '../ThemeProvider';
 import { AboutUsModal } from '../AboutUsModal';
+import { HIDAYAH_API_URL, hidayahFetch } from '@/lib/api';
+
+
 
 export default function ProfileMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,14 +30,16 @@ export default function ProfileMenu() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/auth/logout`, { method: 'POST' });
+
       if (res.ok) {
         router.push('/');
         router.refresh();
       }
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Logout failed detailed error:', error);
     }
+
   };
 
   const handleDeleteAccount = async () => {
@@ -43,7 +48,8 @@ export default function ProfileMenu() {
     }
 
     try {
-      const res = await fetch('/api/users/profile', { method: 'DELETE' });
+      const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/users/profile`, { method: 'DELETE' });
+
       if (res.ok) {
         router.push('/');
         router.refresh();
@@ -51,9 +57,10 @@ export default function ProfileMenu() {
         alert("Failed to delete account. Please try again.");
       }
     } catch (error) {
-      console.error('Delete account failed:', error);
+      console.error('Delete account failed detailed error:', error);
       alert("An error occurred. Please try again.");
     }
+
   };
 
   return (

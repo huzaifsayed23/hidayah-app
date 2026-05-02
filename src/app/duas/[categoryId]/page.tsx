@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import Link from "next/link";
 import { categories, duas } from "@/data/duas";
 import { ArrowLeft, ArrowRight } from "lucide-react";

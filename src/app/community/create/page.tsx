@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PALETTES, SPIRITUAL_MOODS, COMMON_COLORS, generateMeshGradient } from '@/lib/gradients';
 import { REFLECTION_THEMES } from '@/constants/rewards';
 import { NatureBackground } from '@/components/NatureBackground';
+import { hidayahFetch } from '@/lib/api';
+
 
 export default function CreateReflectionPage() {
   const router = useRouter();
@@ -54,13 +56,14 @@ export default function CreateReflectionPage() {
     }
 
     // Fetch unlocked backgrounds
-    fetch('/api/user/rewards')
+    hidayahFetch('/api/user/rewards')
       .then(res => res.json())
       .then(data => {
         if (data.unlockedBackgrounds) {
           setUnlockedBackgrounds(data.unlockedBackgrounds);
         }
       })
+
       .catch(console.error);
   }, []);
 
@@ -69,7 +72,7 @@ export default function CreateReflectionPage() {
     setIsSubmitting(true);
     
     try {
-      const res = await fetch('/api/posts', {
+      const res = await hidayahFetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -83,6 +86,7 @@ export default function CreateReflectionPage() {
           textColor: selectedTextColor,
         })
       });
+
       
       if (res.ok) {
         router.push('/community');

@@ -6,6 +6,9 @@ import { motion } from "framer-motion";
 import { Logo } from "@/components/Logo";
 import { BookOpen, Moon, Heart, Clock, Users, ArrowRight, ShieldAlert, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HIDAYAH_API_URL, hidayahFetch } from "@/lib/api";
+
+
 
 const INTERESTS = [
   { id: "quran", label: "Quran", subtitle: "Full Juz-based reader", icon: BookOpen },
@@ -22,13 +25,15 @@ export default function OnboardingPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/me')
+    hidayahFetch(`${HIDAYAH_API_URL}/api/auth/me`)
       .then(res => res.json())
       .then(data => {
         if (data.isAdmin) setIsAdmin(true);
       })
-      .catch(console.error);
+      .catch(err => console.error("Onboarding auth check error:", err));
+
   }, []);
+
 
   const currentInterests = [...INTERESTS];
   if (isAdmin) {

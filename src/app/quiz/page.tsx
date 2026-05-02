@@ -10,6 +10,8 @@ import { BADGES, REFLECTION_THEMES } from '@/constants/rewards';
 import { NatureBackground } from '@/components/NatureBackground';
 import { Trophy, Image as ImageIcon, Eye } from 'lucide-react';
 import { ThemePreviewModal } from '@/components/ThemePreviewModal';
+import { hidayahFetch } from '@/lib/api';
+
 
 const LEVELS = [
   {
@@ -57,12 +59,13 @@ export default function QuizSelectionPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/quiz/progress?t=${Date.now()}`)
+    hidayahFetch(`/api/quiz/progress?t=${Date.now()}`)
       .then(res => res.json())
       .then(data => {
         setProgress(data);
         setIsLoading(false);
       })
+
       .catch(err => {
         console.error(err);
         setIsLoading(false);
@@ -279,10 +282,11 @@ export default function QuizSelectionPage() {
           <button
             onClick={async () => {
               if (confirm('Are you sure you want to reset your quiz journey? This will relock all levels.')) {
-                await fetch('/api/quiz/progress', { method: 'DELETE' });
+                await hidayahFetch('/api/quiz/progress', { method: 'DELETE' });
                 window.location.reload();
               }
             }}
+
             className="flex items-center gap-2 px-8 py-4 rounded-full border border-red-200 text-red-400 hover:bg-red-50 transition-all duration-300"
           >
             <RotateCcw className="w-4 h-4" />

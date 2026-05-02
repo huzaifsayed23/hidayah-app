@@ -1,33 +1,73 @@
-import React from 'react';
-import { cookies } from "next/headers";
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import jwt from "jsonwebtoken";
-import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
-import { redirect } from "next/navigation";
-import { ShieldAlert, Users, Mail, Clock, Lock, Key } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ShieldAlert, Users, Mail, Clock, Lock, Key, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { hidayahFetch } from '@/lib/api';
 
-export const dynamic = "force-dynamic";
 
-export default async function AdminDashboard() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("hidayah_token")?.value;
+export default function AdminDashboard() {
+  const router = useRouter();
+  const [users, setUsers] = useState<any[]>([]);
+  const [pendingReportsCount, setPendingReportsCount] = useState(0);
+  const [decoded, setDecoded] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
-  if (!token) {
-    redirect("/");
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const meRes = await hidayahFetch('/api/auth/me');
+        if (!meRes.ok) {
+          router.push('/');
+          return;
+        }
+        const meData = await meRes.json();
+
+        setDecoded(meData);
+
+        if (meData.email !== "huzaifsayed454@gmail.com") {
+          setIsAuthorized(false);
+          setIsLoading(false);
+          return;
+        }
+
+        setIsAuthorized(true);
+
+        const [usersRes, reportsRes] = await Promise.all([
+          hidayahFetch('/api/admin/users'),
+          hidayahFetch('/api/reports/count?status=pending')
+        ]);
+
+
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          setUsers(usersData.users);
+        }
+        if (reportsRes.ok) {
+          const reportsData = await reportsRes.json();
+          setPendingReportsCount(reportsData.count);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
+        <Loader2 className="w-8 h-8 animate-spin text-hidayah-gold" />
+      </div>
+    );
   }
 
-  let decoded: any;
-  try {
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    decoded = jwt.verify(token, secret);
-  } catch (e) {
-    redirect("/");
-  }
-
-  // Security Gate - Only allow your specific email
-  if (decoded.email !== "huzaifsayed454@gmail.com") {
+  if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-[var(--color-hidayah-primary)] flex items-center justify-center p-6 text-center">
         <div className="bg-[var(--color-hidayah-secondary)] p-8 rounded-3xl max-w-md shadow-lg border border-[var(--color-hidayah-border)]">
@@ -39,13 +79,6 @@ export default async function AdminDashboard() {
     );
   }
 
-  // Fetch users if authorized
-  await dbConnect();
-  // We use .select('+password') to force Mongoose to return the password field
-  const users = await User.find({}).select('+password').sort({ createdAt: -1 }).lean();
-
-  const Report = (await import('@/models/Report')).default;
-  const pendingReportsCount = await Report.countDocuments({ status: 'pending' });
 
   return (
     <main className="min-h-screen bg-[var(--color-hidayah-primary)] p-6 sm:p-12">
