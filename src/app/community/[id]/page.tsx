@@ -1,5 +1,4 @@
 "use client";
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -31,6 +30,13 @@ export default function CircleChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+
+  if (!id) return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
+      <Loader2 className="w-8 h-8 animate-spin text-[var(--color-hidayah-gold)]" />
+      <span className="ml-3 text-[var(--color-hidayah-dark)] opacity-50">Initializing...</span>
+    </div>
+  );
   const [isSending, setIsSending] = useState(false);
   const [replyTo, setReplyTo] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
