@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+:root {
+  --color-hidayah-primary: #F2EBE1;
+  --color-hidayah-secondary: #E8DCCB;
+  --color-hidayah-gold: #C9A86A;
+  --color-hidayah-dark: #2E2A26;
+  --color-hidayah-border: #D1BFA6;
+}
+
+.dark {
+  --color-hidayah-primary: #000000;
+  --color-hidayah-secondary: #121212;
+  --color-hidayah-gold: #C9A86A;
+  --color-hidayah-dark: #F5F5F5;
+  --color-hidayah-border: #333333;
+}
+
+@theme {
+  --color-hidayah-primary: var(--color-hidayah-primary);
+  --color-hidayah-secondary: var(--color-hidayah-secondary);
+  --color-hidayah-gold: var(--color-hidayah-gold);
+  --color-hidayah-dark: var(--color-hidayah-dark);
+  --color-hidayah-border: var(--color-hidayah-border);
+  --font-sans: var(--font-outfit), Arial, Helvetica, sans-serif;
+  --font-arabic: var(--font-amiri-quran), var(--font-scheherazade), serif;
+  --font-serif: var(--font-serif), Georgia, serif;
+}
+
+@layer base {
+  :root {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+  
+  body {
+    background-color: var(--color-hidayah-primary);
+    color: var(--color-hidayah-dark);
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+    overscroll-behavior-y: none; /* Premium app feel */
+    -webkit-overflow-scrolling: touch;
+    user-select: none; /* Prevent accidental text selection like a native app */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Allow selection only in inputs and specific areas */
+  input, textarea, [contenteditable="true"], .allow-select {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+  }
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  /* Premium Touch Interactions */
+  .active-scale:active {
+    transform: scale(0.96);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Safe area for mobile devices */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
