@@ -70,9 +70,11 @@ export default function AuthPage() {
         .catch(() => ({ message: "Invalid response from server" }));
 
       if (!res.ok) {
-        setError(
-          data.message || "Authentication failed. Please check your credentials."
-        );
+        // Log the full error data for debugging
+        console.error("Auth failed response:", data);
+        
+        const errorMessage = data.details || data.message || "Authentication failed. Please check your credentials.";
+        setError(errorMessage);
         setIsLoading(false);
         return;
       }
