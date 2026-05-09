@@ -1,4 +1,5 @@
-export function generateStaticParams() { return [{ id: '1' }]; }
+export const dynamic = 'force-dynamic';
+]; }
 
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';

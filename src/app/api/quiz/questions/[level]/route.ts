@@ -1,4 +1,4 @@
-export function generateStaticParams() { return [{ level: '1' }]; }
+]; }
 
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
