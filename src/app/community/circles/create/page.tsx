@@ -102,7 +102,7 @@ export default function CreateCirclePage() {
 
       const data = await res.json();
       if (res.ok) {
-        router.push(`/community/${data.circle._id}`);
+        router.push(`/community/${data.circle.slug}`);
       } else {
         setError(data.message || "Failed to create circle");
       }

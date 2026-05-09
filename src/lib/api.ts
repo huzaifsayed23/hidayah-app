@@ -1,7 +1,72 @@
+import { Capacitor, CapacitorHttp, HttpOptions } from '@capacitor/core';
+
 const BASE_URL = "https://api.quran.com/api/v4";
 const FOUNDATION_BASE_URL = "https://apis.quran.foundation/content/api/v4";
-export const HIDAYAH_API_URL = process.env.NEXT_PUBLIC_HIDAYAH_API_URL || "";
+export const HIDAYAH_API_URL = "https://hidayah-lgq6.vercel.app";
 
+/**
+ * Universal fetch that uses CapacitorHttp on native platforms for better connectivity
+ * and standard fetch on web/server.
+ */
+async function universalFetch(url: string, options: RequestInit = {}) {
+  const isNative = Capacitor.isNativePlatform();
+
+  if (isNative) {
+    // Build headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> || {}),
+    };
+
+    // Prepare data
+    let data = options.body;
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+      } catch (e) {
+        // Keep as string if not JSON
+      }
+    }
+
+    const httpOptions: HttpOptions = {
+      url: url.startsWith('http') ? url : (url.startsWith('/') ? `${HIDAYAH_API_URL}${url}` : `${HIDAYAH_API_URL}/${url}`),
+      method: options.method || 'GET',
+      headers: headers,
+      data: data,
+    };
+
+    try {
+      const response = await CapacitorHttp.request(httpOptions);
+      
+      return {
+        ok: response.status >= 200 && response.status < 300,
+        status: response.status,
+        statusText: response.status.toString(),
+        headers: new Headers(response.headers as any),
+        json: async () => {
+          if (!response.data) return null;
+          if (typeof response.data === 'string') {
+            try {
+              return JSON.parse(response.data);
+            } catch (e) {
+              console.error('Failed to parse JSON string:', response.data);
+              return { error: 'Invalid JSON', raw: response.data };
+            }
+          }
+          return response.data;
+        },
+        text: async () => typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
+        clone: function() { return this; }
+      } as Response;
+    } catch (error) {
+      console.error(`CapacitorHttp failed for ${url}:`, error);
+      throw error;
+    }
+  }
+
+  // Fallback to standard fetch
+  return fetch(url, options);
+}
 
 export interface Juz {
   id: number;
@@ -45,17 +110,16 @@ export interface Verse {
 }
 
 export async function getJuzs(): Promise<Juz[]> {
-  const res = await fetch(`${BASE_URL}/juzs`);
+  const res = await universalFetch(`${BASE_URL}/juzs`);
   if (!res.ok) throw new Error("Failed to fetch juzs");
   const data = await res.json();
   return data.juzs;
 }
 
 export async function getChapters(): Promise<Chapter[]> {
-  const res = await fetch(`${FOUNDATION_BASE_URL}/chapters`);
+  const res = await universalFetch(`${FOUNDATION_BASE_URL}/chapters`);
   if (!res.ok) {
-    // Fallback to main API if foundation fails
-    const fallback = await fetch(`${BASE_URL}/chapters`);
+    const fallback = await universalFetch(`${BASE_URL}/chapters`);
     if (!fallback.ok) throw new Error("Failed to fetch chapters");
     const data = await fallback.json();
     return data.chapters;
@@ -65,17 +129,16 @@ export async function getChapters(): Promise<Chapter[]> {
 }
 
 export async function getVersesByPage(page: number): Promise<Verse[]> {
-  const res = await fetch(`${BASE_URL}/verses/by_page/${page}?fields=text_indopak`);
+  const res = await universalFetch(`${BASE_URL}/verses/by_page/${page}?fields=text_indopak`);
   if (!res.ok) throw new Error("Failed to fetch verses for page");
   const data = await res.json();
   return data.verses;
 }
 
 export async function getVersesByChapter(chapterId: number): Promise<Verse[]> {
-  // Fetch Arabic text and translations separately for maximum reliability
   const [arabicRes, translationRes] = await Promise.all([
-    fetch(`${BASE_URL}/quran/verses/indopak?chapter_number=${chapterId}`),
-    fetch(`${BASE_URL}/quran/translations/20?chapter_number=${chapterId}`)
+    universalFetch(`${BASE_URL}/quran/verses/indopak?chapter_number=${chapterId}`),
+    universalFetch(`${BASE_URL}/quran/translations/20?chapter_number=${chapterId}`)
   ]);
 
   if (!arabicRes.ok || !translationRes.ok) {
@@ -85,7 +148,6 @@ export async function getVersesByChapter(chapterId: number): Promise<Verse[]> {
   const arabicData = await arabicRes.json();
   const translationData = await translationRes.json();
 
-  // Merge the data
   const mergedVerses = arabicData.verses.map((verse: any, index: number) => {
     const translation = translationData.translations[index];
     return {
@@ -102,15 +164,34 @@ export async function getVersesByChapter(chapterId: number): Promise<Verse[]> {
  * Authorization header (from localStorage) for maximum localhost reliability.
  */
 export async function hidayahFetch(url: string, options: RequestInit = {}) {
-  // Resolve relative URLs to the production API URL
-  const fullUrl = url.startsWith('http') ? url : `${HIDAYAH_API_URL}${url.startsWith('/') ? url : `/${url}`}`;
+  let path = url;
+  if (HIDAYAH_API_URL && url.startsWith(HIDAYAH_API_URL)) {
+    path = url.replace(HIDAYAH_API_URL, '');
+  }
+  
+  // Strip trailing slash for API consistency
+  if (path.includes('/api/') && path.endsWith('/')) {
+    path = path.slice(0, -1);
+  }
 
-  // Build headers with auth token from localStorage (if available)
+  let fullUrl = path;
+  if (!path.startsWith('http')) {
+    const isBrowser = typeof window !== 'undefined';
+    const isNative = Capacitor.isNativePlatform();
+
+    if (HIDAYAH_API_URL && (!isBrowser || isNative)) {
+      fullUrl = `${HIDAYAH_API_URL}${path.startsWith('/') ? path : `/${path}`}`;
+    } else {
+      fullUrl = path.startsWith('/') ? path : `/${path}`;
+    }
+  }
+
+  const isFormData = options.body instanceof FormData;
   const headers: Record<string, string> = {
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string> || {}),
   };
 
-  // Attach token from localStorage as Bearer header (works even when cookies are blocked)
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('hidayah_token');
     if (token && !headers['Authorization']) {
@@ -118,25 +199,31 @@ export async function hidayahFetch(url: string, options: RequestInit = {}) {
     }
   }
 
-  const response = await fetch(fullUrl, {
-    ...options,
-    headers,
-    credentials: 'include', // Always send cookies too
-  });
+  try {
+    const response = await universalFetch(fullUrl, {
+      ...options,
+      headers,
+      credentials: 'include',
+    } as any);
 
-  // If this was a successful auth request, persist the token to localStorage
-  if (response.ok && typeof window !== 'undefined') {
-    const cloned = response.clone();
-    try {
-      const data = await cloned.json();
-      if (data.token) {
-        localStorage.setItem('hidayah_token', data.token);
+    if (response.ok && typeof window !== 'undefined') {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const cloned = response.clone();
+        try {
+          const data = await cloned.json();
+          if (data.token) {
+            localStorage.setItem('hidayah_token', data.token);
+          }
+        } catch {
+          // Ignore
+        }
       }
-    } catch {
-      // Not a JSON response, ignore
     }
+
+    return response;
+  } catch (error) {
+    console.error(`hidayahFetch failed for ${fullUrl}:`, error);
+    throw error;
   }
-
-  return response;
 }
-

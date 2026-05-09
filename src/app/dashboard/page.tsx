@@ -1,40 +1,33 @@
+"use client";
+
 import { Logo } from "@/components/Logo";
 import Link from "next/link";
 import { BookOpen, Heart, Users, User as UserIcon, ArrowLeft, MessageSquare, Key, Clock, Moon, GraduationCap } from "lucide-react";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
-import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
-import { redirect } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export default function DashboardPage() {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const router = useRouter();
 
-export default async function DashboardPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("hidayah_token")?.value;
-  let isAdmin = false;
-  let currentUserId = "";
-
-  if (token) {
-    try {
-      const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-      const decoded: any = jwt.verify(token, secret);
-      currentUserId = decoded.userId;
-      if (decoded.email === "huzaifsayed454@gmail.com") {
-        isAdmin = true;
-      }
-
-      if (currentUserId) {
-        await dbConnect();
-        const user = await User.findById(currentUserId).select('acceptedTerms').lean();
-        if (user && user.acceptedTerms === false) {
-          redirect('/agreement');
+  useEffect(() => {
+    // Client-side auth check
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(data.isAdmin);
+          if (data.authenticated && data.acceptedTerms === false) {
+            router.push('/agreement');
+          }
         }
+      } catch (e) {
+        console.error("Auth check failed", e);
       }
-    } catch (e) {
-      // Ignore token validation failure in dashboard
-    }
-  }
+    };
+    checkAuth();
+  }, [router]);
 
   const MENU_ITEMS = [
     { label: "Community Feed", href: "/community", icon: Users },
@@ -53,7 +46,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-hidayah-primary flex flex-col items-center justify-center p-6 text-center">
+    <main className="min-h-screen bg-hidayah-primary flex flex-col items-center p-6 pt-12 pb-24 text-center">
       <Logo className="mb-10" />
       <h1 className="text-2xl sm:text-3xl font-light text-[var(--color-hidayah-dark)] mb-12 tracking-wide">
         Explore Hidayah

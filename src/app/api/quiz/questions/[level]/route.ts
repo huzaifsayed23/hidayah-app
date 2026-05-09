@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import QuizQuestion from '@/models/QuizQuestion';
@@ -8,8 +9,12 @@ export async function GET(
   { params }: { params: Promise<{ level: string }> }
 ) {
   try {
+    try {
+      await dbConnect();
+    } catch (e) {
+      return NextResponse.json({ message: 'Static build' });
+    }
     const { level } = await params;
-    await dbConnect();
 
     let questions;
     

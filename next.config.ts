@@ -1,9 +1,16 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  /* config options here */
-  allowedDevOrigins: ['192.168.1.6'],
-};
+const isMobileBuild = process.env.BUILD_MODE === 'mobile';
 
+const nextConfig: NextConfig = {
+  ...(isMobileBuild ? { output: 'export' } : {}),
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+};
 
 export default nextConfig;

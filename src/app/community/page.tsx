@@ -1,136 +1,109 @@
-import React from 'react';
-import { Search, Bell, Plus, UserCircle } from 'lucide-react';
+"use client";
+
+import React, { useState, useEffect, Suspense } from 'react';
+import { Search, Bell, Plus, UserCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import FeedCard from '@/components/community/FeedCard';
+import { useRouter, useSearchParams } from 'next/navigation';
 import CommunityFeed from '@/components/community/CommunityFeed';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
-import dbConnect from '@/lib/mongodb';
-import Post from '@/models/Post';
 import BottomNav from '@/components/BottomNav';
+import { hidayahFetch } from '@/lib/api';
+import { SPIRITUAL_THEMES } from '@/lib/gradients';
 
-const MOODS = ["All", "Peaceful", "Grateful", "Hopeful", "Reflective", "Seeking Sabr"];
+const MOODS = ["All", ...SPIRITUAL_THEMES];
 
-const MOCK_POSTS = [
-  {
-    id: "1",
-    author: "Zayd",
-    timeAgo: "2 hours ago",
-    moodTag: "Reflective",
-    content: "Sometimes the most profound answers come when we finally stop rushing and learn to sit in silence. Trust His timing.",
-    verse: {
-      surah: "Al-Baqarah",
-      ayah: 153,
-      text: "يَا أَيُّهَا الَّذِينَ آمَنُوا اسْتَعِينُوا بِالصَّبْرِ وَالصَّلَاةِ ۚ إِنَّ اللَّهَ مَعَ الصَّابِرِينَ"
-    },
-    ameenCount: 12,
-    commentCount: 3,
-  },
-  {
-    id: "2",
-    author: "Aisha",
-    timeAgo: "5 hours ago",
-    moodTag: "Grateful",
-    content: "Alhamdulillah for the small mercies we overlook every day. The cool breeze, the ability to breathe easily, a text from a loved one. It all matters.",
-    ameenCount: 45,
-    commentCount: 0,
-  },
-  {
-    id: "3",
-    author: "Omar",
-    timeAgo: "1 day ago",
-    moodTag: "Seeking Sabr",
-    content: "When things don't go as planned, I remind myself that my perspective is limited, but His wisdom is infinite. Still learning to let go.",
-    verse: {
-      surah: "Ash-Sharh",
-      ayah: 5,
-      text: "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا"
-    },
-    ameenCount: 89,
-    commentCount: 12,
-  }
-];
-
-export const dynamic = "force-dynamic";
-
-export default async function CommunityPage({ searchParams }: { searchParams: Promise<{ mood?: string }> }) {
-  const { mood } = await searchParams;
-  const currentMood = mood || "All";
-
-  const cookieStore = await cookies();
-  const token = cookieStore.get('hidayah_token')?.value;
-  let userName = "Guest";
-  let currentUserId = "";
-
-  if (token) {
-    try {
-      const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production');
-      currentUserId = decoded.userId || decoded.email; // Fallback to email for admin account
-      if (decoded.username) {
-        userName = `@${decoded.username}`;
-      } else {
-        const prefix = decoded.email.split('@')[0];
-        userName = prefix.charAt(0).toUpperCase() + prefix.slice(1).replace(/[0-9]/g, '');
-      }
-    } catch(e) {}
-  }
-
-  await dbConnect();
-
-  let userSavedPosts: string[] = [];
-  if (currentUserId && currentUserId !== 'admin@gmail.com') {
-    const User = (await import('@/models/User')).default;
-    const userDoc = await User.findById(currentUserId).lean() as any;
-    
-    if (userDoc && userDoc.acceptedTerms === false) {
-      const { redirect } = await import('next/navigation');
-      redirect('/agreement');
-    }
-
-    if (userDoc && userDoc.savedPosts) {
-      userSavedPosts = userDoc.savedPosts.map((id: any) => id.toString());
-    }
-  }
-
-  const query = currentMood !== "All" ? { moodTag: currentMood } : {};
-  const dbPosts = await Post.find(query).sort({ createdAt: -1 }).lean();
+function CommunityContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentMood = searchParams.get('mood') || "All";
   
-  const displayPosts = dbPosts.length > 0 ? dbPosts.map((post: any) => ({
-    id: post._id.toString(),
-    author: post.authorName,
-    timeAgo: new Date(post.createdAt).toLocaleDateString(),
-    moodTag: post.moodTag,
-    content: post.content,
-    verse: post.verse || undefined,
-    ameenCount: post.ameenCount || 0,
-    commentCount: post.commentCount || 0,
-    ameens: post.ameens || [],
-    replies: (post.replies || []).map((r: any) => ({
-      author: r.author,
-      content: r.content,
-      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
-    })),
-    backdropVariant: post.backdropVariant,
-    themePalette: post.themePalette,
-    isSaved: userSavedPosts.includes(post._id.toString()),
-    userId: post.userId?.toString(),
-    authorImage: post.authorImage,
-    hadith: post.hadith || undefined,
-    reflectionThemeId: post.reflectionThemeId,
-    textColor: post.textColor,
-  })) : []; // Do not show mock posts if filtered
+  const [posts, setPosts] = useState<any[]>([]);
+  const [userName, setUserName] = useState("User");
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // 1. Auth Check
+        const meRes = await hidayahFetch("/api/auth/me");
+        if (!meRes.ok) {
+          router.push("/auth");
+          return;
+        }
+        const meData = await meRes.json();
+        if (!meData.authenticated) {
+          router.push("/auth");
+          return;
+        }
+
+        // 2. Profile Data (for username and terms check)
+        const profileRes = await hidayahFetch("/api/users/profile");
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          const user = profileData.user;
+          
+          if (user.acceptedTerms === false) {
+            router.push("/agreement");
+            return;
+          }
+
+          setCurrentUserId(user._id);
+          if (user.username) {
+            setUserName(`@${user.username}`);
+          } else {
+            const prefix = user.email.split('@')[0];
+            setUserName(prefix.charAt(0).toUpperCase() + prefix.slice(1).replace(/[0-9]/g, ''));
+          }
+        }
+
+        // 3. Posts Data
+        const postsRes = await hidayahFetch(`/api/posts?mood=${currentMood === 'All' ? '' : currentMood}`);
+        if (postsRes.ok) {
+          const postsData = await postsRes.json();
+          setPosts(postsData.posts);
+        }
+      } catch (e) {
+        console.error("Community page fetch error:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [currentMood, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--color-hidayah-gold)]" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen pb-24 max-w-2xl mx-auto px-4 sm:px-6 pt-8">
-      <CommunityFeed 
-        initialPosts={displayPosts} 
-        userName={userName} 
-        currentUserId={currentUserId}
-        moods={MOODS}
-        currentMood={currentMood}
-      />
-      <BottomNav />
+    <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-hidayah-primary)]">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-0 pb-[120px] custom-scrollbar max-w-2xl mx-auto w-full">
+        <CommunityFeed 
+          initialPosts={posts} 
+          userName={userName} 
+          currentUserId={currentUserId}
+          moods={MOODS}
+          currentMood={currentMood}
+        />
+      </div>
     </div>
+  );
+}
+
+export default function CommunityPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--color-hidayah-gold)]" />
+      </div>
+    }>
+      <CommunityContent />
+    </Suspense>
   );
 }

@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Circle from '@/models/Circle';
@@ -7,7 +8,7 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
 async function getAuthUser() {
-  const cookieStore = await cookies();
+  const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
   const token = cookieStore.get('hidayah_token')?.value;
   if (!token) return null;
   try {
@@ -18,16 +19,39 @@ async function getAuthUser() {
   }
 }
 
+
+
 export async function GET(req: Request) {
   try {
-    const user = await getAuthUser();
-    if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    let user = null;
+    try {
+      user = await getAuthUser();
+    } catch (e) {
+      // Ignore during build
+    }
+
+    if (!user) return NextResponse.json({ circles: [] });
 
     const { searchParams } = new URL(req.url);
     const filter = searchParams.get('filter') || 'mine';
 
     await dbConnect();
     
+    // One-time migration for circles without slugs to ensure "required: true" doesn't break
+    const circlesWithoutSlug = await Circle.find({ 
+      $or: [
+        { slug: { $exists: false } }, 
+        { slug: null }, 
+        { slug: "" }
+      ] 
+    });
+    for (const c of circlesWithoutSlug) {
+      let slug = c.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const exists = await Circle.findOne({ slug });
+      if (exists) slug = `${slug}-${Math.random().toString(36).substring(2, 5)}`;
+      await Circle.updateOne({ _id: c._id }, { $set: { slug } });
+    }
+
     let circles;
     if (filter === 'mine') {
       circles = await Circle.find({ memberIds: user.userId }).sort({ createdAt: -1 }).lean();
@@ -64,9 +88,19 @@ export async function POST(req: Request) {
 
     await dbConnect();
 
+    // Generate Slug
+    let slug = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    
+    // Check if slug already exists, if so append unique string
+    const existingCircle = await Circle.findOne({ slug });
+    if (existingCircle) {
+      slug = `${slug}-${Math.random().toString(36).substring(2, 7)}`;
+    }
+
     try {
       const newCircle = await Circle.create({
         title,
+        slug,
         description,
         category,
         privacy,

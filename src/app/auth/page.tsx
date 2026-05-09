@@ -47,11 +47,14 @@ export default function AuthPage() {
 
     try {
       const endpoint = isLogin
-        ? `${HIDAYAH_API_URL}/api/auth/login`
-        : `${HIDAYAH_API_URL}/api/auth/signup`;
+        ? `/api/auth/login`
+        : `/api/auth/signup`;
       const bodyPayload = isLogin
         ? { email, password }
         : { username, email, password };
+
+      // Debug Alert for Mobile Connectivity Testing
+      try { alert('Connecting to: ' + endpoint); } catch(e) {}
 
       const res = await hidayahFetch(endpoint, {
         method: "POST",

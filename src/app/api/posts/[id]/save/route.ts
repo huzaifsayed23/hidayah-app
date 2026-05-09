@@ -1,13 +1,25 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-async function getUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('hidayah_token')?.value;
+async function getUser(req?: Request) {
+  let token = null;
+  try {
+    const cookieStore = (await cookies().catch(() => null));
+    token = cookieStore?.get('hidayah_token')?.value;
+  } catch (e) {}
+
+  if (!token && req) {
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
+
   if (!token) return null;
   try {
     const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
@@ -22,15 +34,17 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const decoded = await getUser();
-    if (!decoded || !decoded.userId) {
+    const decoded = await getUser(req);
+    if (!decoded || (!decoded.userId && !decoded.id)) {
       return NextResponse.json({ message: 'Unauthorized or missing userId' }, { status: 401 });
     }
+
+    const userId = decoded.userId || decoded.id;
 
     await dbConnect();
     const { id: postId } = await params;
     
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(userId);
     if (!user) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }

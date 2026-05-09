@@ -1,6 +1,10 @@
-export const dynamic = 'force-dynamic';
-import Link from "next/link";
 import { categories, duas } from "@/data/duas";
+
+export function generateStaticParams() {
+  return categories.map((c) => ({ categoryId: c.id }));
+}
+
+import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 

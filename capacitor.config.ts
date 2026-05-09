@@ -7,8 +7,12 @@ const config: CapacitorConfig = {
   // @ts-ignore - bundledWebRuntime is required for legacy support in some environments
   bundledWebRuntime: false,
   server: {
-    url: 'https://hidayah-lgq6.vercel.app',
     cleartext: true
+  },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true
+    }
   }
 };
 

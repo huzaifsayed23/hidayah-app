@@ -130,7 +130,7 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
             <div className="flex flex-col gap-6">
               {/* First 4 posts - Immediate */}
               {filteredPosts.slice(0, 4).map((post: any) => (
-                <FeedCard key={post.id} {...post} currentUserId={currentUserId} />
+                <FeedCard key={post._id} id={post._id} {...post} currentUserId={currentUserId} />
               ))}
 
               {/* Subsequent posts - Revealed in chunks of 4 with a delay */}
@@ -186,7 +186,7 @@ function PacedFeed({ posts, currentUserId }: { posts: any[], currentUserId: stri
     <div className="flex flex-col gap-6">
       {/* Revealed Chunks */}
       {posts.slice(0, chunksToReveal * chunkSize).map((post: any) => (
-        <FeedCard key={post.id} {...post} currentUserId={currentUserId} />
+        <FeedCard key={post._id} id={post._id} {...post} currentUserId={currentUserId} />
       ))}
 
       {/* Loading Indicator / Observer Target */}

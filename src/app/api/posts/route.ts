@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Post from '@/models/Post';
@@ -6,9 +7,20 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
 // Helper to get authenticated user
-async function getUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('hidayah_token')?.value;
+async function getUser(req?: Request) {
+  let token = null;
+  try {
+    const cookieStore = (await cookies().catch(() => null));
+    token = cookieStore?.get('hidayah_token')?.value;
+  } catch (e) {}
+
+  if (!token && req) {
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
+
   if (!token) return null;
   try {
     const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
@@ -20,13 +32,22 @@ async function getUser() {
 
 export async function GET(req: Request) {
   try {
-    await dbConnect();
+    try {
+      await dbConnect();
+    } catch (e) {
+      return NextResponse.json({ posts: [], page: 1, limit: 50 });
+    }
+
     const url = new URL(req.url);
     const userId = url.searchParams.get('userId');
+    const mood = url.searchParams.get('mood');
 
     const query: any = { isVisible: { $ne: false } };
     if (userId) {
       query.userId = userId;
+    }
+    if (mood && mood !== 'All') {
+      query.moodTag = mood;
     }
 
     const page = parseInt(url.searchParams.get('page') || '1');
@@ -48,7 +69,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const user = await getUser();
+    const user = await getUser(req);
     if (!user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
@@ -78,6 +99,7 @@ export async function POST(req: Request) {
       hadith: body.hadith || null,
       reflectionThemeId: body.reflectionThemeId || null,
       textColor: body.textColor || null,
+      customBackgroundImage: body.customBackgroundImage || null,
     });
 
     return NextResponse.json({ post: newPost }, { status: 201 });

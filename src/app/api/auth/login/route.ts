@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
@@ -21,7 +22,14 @@ export async function POST(req: Request) {
   try {
     await dbConnect();
     
-    const { email, password } = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { email, password } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -76,20 +84,28 @@ export async function POST(req: Request) {
 
     const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
     const token = jwt.sign(
-      { userId: user._id, email: user.email, username: user.username },
+      { userId: user._id.toString(), email: user.email, username: user.username },
       jwtSecret,
       { expiresIn: '7d' }
     );
 
     const isProduction = process.env.NODE_ENV === 'production';
-    const cookieStore = await cookies();
-    cookieStore.set('hidayah_token', token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-      path: '/',
-    });
+    const cookieStore = (await cookies().catch(() => null)); 
+    
+    if (cookieStore) {
+      try {
+        cookieStore.set('hidayah_token', token, {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: isProduction ? 'none' : 'lax',
+          maxAge: 60 * 60 * 24 * 7, // 1 week
+          path: '/',
+        });
+      } catch (e) {
+        // Build-time or static-mode safety
+        console.warn("Cookie set failed (likely static export mode)");
+      }
+    }
 
 
     return NextResponse.json(
@@ -103,9 +119,12 @@ export async function POST(req: Request) {
     );
     
   } catch (error: any) {
-    console.error('Login error:', error);
+    console.error('CRITICAL LOGIN ERROR:', error);
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { 
+        message: 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       {
         status: 500,
         headers: {
@@ -115,4 +134,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

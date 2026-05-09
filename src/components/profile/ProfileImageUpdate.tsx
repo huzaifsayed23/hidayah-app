@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Camera, Loader2, UserCircle } from 'lucide-react';
+import { hidayahFetch } from '@/lib/api';
 
 interface ProfileImageUpdateProps {
   initialImage: string | null;
@@ -28,7 +29,7 @@ export default function ProfileImageUpdate({ initialImage, userInitial }: Profil
         // Upload to API
         setIsUploading(true);
         try {
-          const res = await fetch('/api/users/profile-image', {
+          const res = await hidayahFetch('/api/users/profile-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image: base64 }),

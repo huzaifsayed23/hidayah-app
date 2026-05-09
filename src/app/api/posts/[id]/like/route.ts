@@ -1,13 +1,25 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Post from '@/models/Post';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-async function getUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('hidayah_token')?.value;
+async function getUser(req?: Request) {
+  let token = null;
+  try {
+    const cookieStore = (await cookies().catch(() => null));
+    token = cookieStore?.get('hidayah_token')?.value;
+  } catch (e) {}
+
+  if (!token && req) {
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
+
   if (!token) return null;
   try {
     const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
@@ -22,7 +34,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getUser();
+    const user = await getUser(req);
     if (!user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
@@ -35,7 +47,7 @@ export async function POST(
       return NextResponse.json({ message: 'Post not found' }, { status: 404 });
     }
 
-    const userId = user.userId || user.email; // Fallback to email for admin account
+    const userId = user.userId || user.id || user.email; // Ensure we get a valid ID from the token
     if (!post.ameens) post.ameens = [];
     
     const hasLiked = post.ameens.includes(userId);

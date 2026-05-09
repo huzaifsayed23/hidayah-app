@@ -110,10 +110,10 @@ export const BADGES: Badge[] = [
     levelRequired: 5,
   },
   {
-    id: 'master_scholar',
-    name: 'Knowledge Master',
-    description: 'Mastered the Final Challenge',
-    icon: '👑',
+    id: 'mushkil_master',
+    name: 'Mushkil Master',
+    description: 'Mastered the most difficult challenge in the sanctuary.',
+    icon: '🔥',
     levelRequired: 6,
   },
 ];

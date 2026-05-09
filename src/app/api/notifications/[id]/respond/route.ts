@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Notification from '@/models/Notification';
@@ -8,7 +9,7 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
 async function getAuthUser() {
-  const cookieStore = await cookies();
+  const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
   const token = cookieStore.get('hidayah_token')?.value;
   if (!token) return null;
   try {

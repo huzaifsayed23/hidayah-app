@@ -11,12 +11,15 @@ import { HIDAYAH_API_URL, hidayahFetch } from '@/lib/api';
 
 
 export default function ProfileMenu() {
+  const { theme, toggleTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
+    setMounted(true);
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -26,11 +29,11 @@ export default function ProfileMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const { theme, toggleTheme } = useTheme();
+  if (!mounted) return null;
 
   const handleLogout = async () => {
     try {
-      const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/auth/logout`, { method: 'POST' });
+      const res = await hidayahFetch('/api/auth/logout', { method: 'POST' });
 
       if (res.ok) {
         router.push('/');
@@ -48,7 +51,7 @@ export default function ProfileMenu() {
     }
 
     try {
-      const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/users/profile`, { method: 'DELETE' });
+      const res = await hidayahFetch('/api/users/profile', { method: 'DELETE' });
 
       if (res.ok) {
         router.push('/');
@@ -99,7 +102,7 @@ export default function ProfileMenu() {
               }}
             >
               <Settings className="w-4 h-4 opacity-70" />
-              Settings
+              About Hidayah
             </button>
             
             <button 

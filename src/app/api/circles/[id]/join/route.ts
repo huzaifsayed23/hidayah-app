@@ -1,5 +1,7 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import Circle from '@/models/Circle';
 import Notification from '@/models/Notification';
@@ -8,7 +10,7 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
 async function getAuthUser() {
-  const cookieStore = await cookies();
+  const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
   const token = cookieStore.get('hidayah_token')?.value;
   if (!token) return null;
   try {
@@ -30,12 +32,19 @@ export async function POST(
     const { id } = await params;
 
     await dbConnect();
-    const circle = await Circle.findById(id);
+    let circle = await Circle.findOne({ slug: id });
+    if (!circle) {
+      circle = await Circle.findOne({ title: { $regex: new RegExp(id.replace(/-/g, ' '), 'i') } });
+    }
+    if (!circle && mongoose.isValidObjectId(id)) {
+      circle = await Circle.findById(id);
+    }
+
     if (!circle) return NextResponse.json({ message: 'Circle not found' }, { status: 404 });
 
     // PUBLIC: Direct Join
     if (circle.privacy === 'public') {
-      await Circle.findByIdAndUpdate(id, {
+      await Circle.findByIdAndUpdate(circle._id, {
         $addToSet: { memberIds: user.userId }
       });
       return NextResponse.json({ success: true, joined: true, message: 'Joined circle successfully' });
@@ -45,7 +54,7 @@ export async function POST(
     // Check if request already exists
     const existingRequest = await Notification.findOne({
       senderId: user.userId,
-      circleId: id,
+      circleId: circle._id,
       type: 'circle_request',
       status: 'pending'
     });
@@ -62,7 +71,7 @@ export async function POST(
       senderId: user.userId,
       senderName: dbUser?.username || user.username || 'A soul',
       type: 'circle_request',
-      circleId: id,
+      circleId: circle._id,
       circleTitle: circle.title,
       status: 'pending'
     });

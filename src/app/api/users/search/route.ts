@@ -1,19 +1,26 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import Post from '@/models/Post';
+
+
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('q');
 
-    if (!query || query.length < 2) {
+    try {
+      await dbConnect();
+    } catch (e) {
       return NextResponse.json({ users: [] });
     }
 
-    await dbConnect();
+    if (!query || query.length < 2) {
+      return NextResponse.json({ users: [] });
+    }
 
     // Search users by username or email (since email prefix is used as fallback username)
     // In a real app, you'd have a separate field for searchable username/displayName

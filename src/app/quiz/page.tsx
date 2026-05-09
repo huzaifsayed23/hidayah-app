@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Lock, CheckCircle2, BookOpen, GraduationCap, Users, History, Sparkles, RotateCcw } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import Link from 'next/link';
-import { BADGES, REFLECTION_THEMES } from '@/constants/rewards';
+import { BADGES } from '@/constants/rewards';
 import { NatureBackground } from '@/components/NatureBackground';
-import { Trophy, Image as ImageIcon, Eye } from 'lucide-react';
-import { ThemePreviewModal } from '@/components/ThemePreviewModal';
+import { Trophy } from 'lucide-react';
 import { hidayahFetch } from '@/lib/api';
+import BottomNav from '@/components/BottomNav';
 
 
 const LEVELS = [
@@ -55,8 +55,6 @@ export default function QuizSelectionPage() {
   const router = useRouter();
   const [progress, setProgress] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [previewTheme, setPreviewTheme] = useState<any>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   useEffect(() => {
     hidayahFetch(`/api/quiz/progress?t=${Date.now()}`)
@@ -73,13 +71,13 @@ export default function QuizSelectionPage() {
   }, []);
 
   const handleStartLevel = (levelId: number) => {
-    if (progress?.unlockedLevels >= levelId) {
+    if ((progress?.unlockedLevels || 1) >= levelId) {
       router.push(`/quiz/${levelId}`);
     }
   };
 
   const isLevelUnlocked = (levelId: number) => {
-    return progress?.unlockedLevels >= levelId;
+    return (progress?.unlockedLevels || 1) >= levelId;
   };
 
   const isLevelCompleted = (levelId: number) => {
@@ -100,7 +98,13 @@ export default function QuizSelectionPage() {
   return (
     <main className="min-h-screen bg-hidayah-primary pb-24">
       {/* Header */}
-      <div className="max-w-4xl mx-auto px-6 pt-12 flex flex-col items-center text-center">
+      <div className="max-w-4xl mx-auto px-6 pt-12 flex flex-col items-center text-center relative">
+        <Link 
+          href="/dashboard"
+          className="absolute left-6 top-12 p-2.5 rounded-full bg-[var(--color-hidayah-secondary)] border border-[var(--color-hidayah-border)]/30 text-[var(--color-hidayah-dark)] hover:text-[var(--color-hidayah-gold)] transition-all shadow-sm"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -169,19 +173,6 @@ export default function QuizSelectionPage() {
                         {BADGES.find(b => b.levelRequired === level.id)?.name}
                       </div>
                     )}
-                    {REFLECTION_THEMES.find(t => t.levelRequired === level.id) && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewTheme(REFLECTION_THEMES.find(t => t.levelRequired === level.id));
-                          setIsPreviewOpen(true);
-                        }}
-                        className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-colors hover:text-hidayah-gold ${completed ? 'text-green-600' : 'text-hidayah-dark/30'}`}
-                      >
-                        <Eye className="w-3 h-3" />
-                        Preview {REFLECTION_THEMES.find(t => t.levelRequired === level.id)?.name} Theme
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -229,7 +220,7 @@ export default function QuizSelectionPage() {
                <Sparkles className={`w-8 h-8 ${progress?.completedLevels?.length >= 5 ? 'text-white' : 'text-gray-400'}`} />
              </div>
              <div className="text-center relative z-10">
-               <h3 className={`text-2xl font-bold font-serif mb-2 ${progress?.completedLevels?.length >= 5 ? 'text-white' : 'text-hidayah-dark'}`}>Master Level</h3>
+               <h3 className={`text-2xl font-bold font-serif mb-2 ${progress?.completedLevels?.length >= 5 ? 'text-white' : 'text-hidayah-dark'}`}>Mushkil Challenge</h3>
                 <p className={`${progress?.completedLevels?.length >= 5 ? 'text-white/60' : 'text-hidayah-dark/40'} text-sm max-w-sm mb-4`}>
                   {progress?.completedLevels?.length >= 5 
                     ? 'A comprehensive challenge with 30 random questions from all levels.' 
@@ -237,23 +228,8 @@ export default function QuizSelectionPage() {
                 </p>
                 
                 {/* Master Level Rewards Preview */}
-                <div className="flex justify-center gap-4 mt-2">
-                   {REFLECTION_THEMES.filter(t => t.levelRequired === 6).map(theme => (
-                     <button
-                       key={theme.id}
-                       type="button"
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         setPreviewTheme(theme);
-                         setIsPreviewOpen(true);
-                       }}
-                       className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-hidayah-gold hover:text-white transition-colors relative z-20"
-                     >
-                       <ImageIcon className="w-3 h-3" />
-                       Preview {theme.name}
-                     </button>
-                   ))}
-                </div>
+                  <div className="flex justify-center gap-4 mt-2">
+                  </div>
               </div>
              
              {progress?.completedLevels?.length < 5 ? (
@@ -272,7 +248,7 @@ export default function QuizSelectionPage() {
         {/* Back Navigation & Reset */}
         <div className="mt-12 flex flex-col sm:flex-row items-center gap-4">
           <Link 
-            href="/onboarding"
+            href="/dashboard"
             className="flex items-center gap-2 px-8 py-4 rounded-full bg-[var(--color-hidayah-secondary)] border border-hidayah-border/30 text-hidayah-dark hover:text-hidayah-gold transition-all duration-300"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -294,13 +270,7 @@ export default function QuizSelectionPage() {
           </button>
         </div>
       </div>
-      <ThemePreviewModal 
-        isOpen={isPreviewOpen} 
-        onClose={() => setIsPreviewOpen(false)} 
-        theme={previewTheme} 
-      />
+      <BottomNav />
     </main>
   );
 }
-
-

@@ -28,7 +28,7 @@ export function SplashScreen() {
       // 3-second timer
       const timer = setTimeout(async () => {
         try {
-          const res = await hidayahFetch(`${HIDAYAH_API_URL}/api/auth/me`);
+          const res = await hidayahFetch("/api/auth/me");
           const data = await res.json();
 
           
@@ -37,7 +37,7 @@ export function SplashScreen() {
           // Cross-Fade transition: Delay for exit animation to complete
           setTimeout(() => {
             if (res.ok && data.authenticated) {
-              router.push("/dashboard");
+              router.push("/community");
             } else {
               router.push("/auth");
             }

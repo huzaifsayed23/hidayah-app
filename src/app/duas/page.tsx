@@ -8,7 +8,7 @@ export default function DuasCategoriesPage() {
     <main className="min-h-screen bg-[var(--color-hidayah-primary)] text-[var(--color-hidayah-dark)] p-6 sm:p-12 transition-colors duration-500">
       <div className="max-w-4xl mx-auto">
         <header className="mb-12">
-          <Link href="/" className="inline-flex items-center gap-2 text-[var(--color-hidayah-dark)]/70 hover:text-hidayah-gold transition-colors mb-8">
+          <Link href="/dashboard" className="inline-flex items-center gap-2 text-[var(--color-hidayah-dark)]/70 hover:text-hidayah-gold transition-colors mb-8">
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm font-medium tracking-widest uppercase">Home</span>
           </Link>

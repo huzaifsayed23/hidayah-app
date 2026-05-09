@@ -1,15 +1,16 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import QuizProgress from '@/models/QuizProgress';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import User from '@/models/User';
-import { BADGES, REFLECTION_THEMES } from '@/constants/rewards';
+import { BADGES } from '@/constants/rewards';
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
+    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
     const token = cookieStore.get('hidayah_token')?.value;
     if (!token) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -40,7 +41,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = await cookies();
+    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
     const token = cookieStore.get('hidayah_token')?.value;
     if (!token) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -50,34 +51,22 @@ export async function POST(req: Request) {
     const decoded: any = jwt.verify(token, secret);
     const userId = decoded.userId || decoded.email;
 
-    const { level, score, questionsCount } = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { level, score, questionsCount } = body;
     const scoreNum = Number(score);
     const questionsCountNum = Number(questionsCount);
-    const levelNum = Number(level);
+    const levelNum = level === 'mixed' ? 6 : Number(level);
     
     console.log(`[Quiz API] User ${userId} completed Level ${levelNum} with score ${scoreNum}/${questionsCountNum}`);
 
     await dbConnect();
     
-    // Use atomic update to avoid race conditions and ensure defaults are applied
-    const update: any = {
-      $inc: { totalQuestionsAnswered: questionsCount },
-      $set: { lastScore: score, updatedAt: new Date() }
-    };
-
-    // If score is passing (7/10 or more), add to completed and potentially unlock next
-    if (score >= 7) {
-      update.$addToSet = { completedLevels: level };
-      
-      // Calculate what the new unlocked level should be
-      // If we just completed our current highest unlocked level, unlock the next one
-      const nextLevel = level + 1;
-      if (nextLevel <= 5) {
-        // We'll update unlockedLevels only if the new level is higher than current
-        // Note: This logic will be handled better by fetching current progress first or using $max
-      }
-    }
-
     let progress = await QuizProgress.findOne({ userId });
     if (!progress) {
       progress = new QuizProgress({ userId });
@@ -94,7 +83,7 @@ export async function POST(req: Request) {
       }
       
       const nextLevel = levelNum + 1;
-      if (nextLevel <= 5 && progress.unlockedLevels < nextLevel) {
+      if (nextLevel <= 6 && progress.unlockedLevels < nextLevel) {
         progress.unlockedLevels = nextLevel;
         console.log(`[Quiz API] Unlocking Level ${nextLevel} for User ${userId}`);
       }
@@ -106,47 +95,22 @@ export async function POST(req: Request) {
     // Reward Logic: Update User document if level passed
     let unlockedReward = null;
     if (isPassing) {
-      // Handle fallback where userId might be an email or an ObjectId string
       const isEmail = userId.includes('@');
       const user = isEmail ? await User.findOne({ email: userId }) : await User.findById(userId);
-      console.log(`[Quiz API] Checking rewards for user ${userId}, found: ${!!user}`);
       
       if (user) {
         let updated = false;
-        
-        // Ensure arrays exist
         if (!user.unlockedBadges) user.unlockedBadges = [];
         if (!user.unlockedBackgrounds) user.unlockedBackgrounds = [];
 
-        // Check for badge unlock
         const badge = BADGES.find(b => b.levelRequired === levelNum);
         if (badge && !user.unlockedBadges.includes(badge.id)) {
           user.unlockedBadges.push(badge.id);
           updated = true;
           unlockedReward = { type: 'badge', data: badge };
-          console.log(`[Quiz API] Unlocked Badge: ${badge.id}`);
-        }
-
-        // Check for background unlock
-        const themes = REFLECTION_THEMES.filter(t => t.levelRequired === levelNum);
-        for (const theme of themes) {
-          if (!user.unlockedBackgrounds.includes(theme.id)) {
-            user.unlockedBackgrounds.push(theme.id);
-            updated = true;
-            if (!unlockedReward) {
-               unlockedReward = { type: 'theme', data: theme };
-            } else if (unlockedReward.type === 'theme') {
-               // If multiple themes, we'll just show the first one in the popup for now
-               // but both are unlocked. Or we could enhance the popup.
-            } else if (unlockedReward.type === 'badge') {
-               unlockedReward = { ...unlockedReward, theme: theme };
-            }
-            console.log(`[Quiz API] Unlocked Theme: ${theme.id}`);
-          }
         }
 
         if (updated) {
-          // Explicitly mark as modified for mixed/array types
           user.markModified('unlockedBadges');
           user.markModified('unlockedBackgrounds');
           await user.save();
@@ -166,7 +130,7 @@ export async function POST(req: Request) {
 
 export async function DELETE() {
   try {
-    const cookieStore = await cookies();
+    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
     const token = cookieStore.get('hidayah_token')?.value;
     if (!token) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

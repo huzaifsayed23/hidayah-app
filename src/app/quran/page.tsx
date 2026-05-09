@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BookOpen, Search, Bookmark, History, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { getJuzs, Juz, HIDAYAH_API_URL, hidayahFetch } from "@/lib/api";
 import { useState, useEffect } from "react";
@@ -14,6 +15,7 @@ const JUZ_PAGES = [
 ];
 
 export default function QuranPage() {
+  const router = useRouter();
   const [juzs, setJuzs] = useState<Juz[]>([]);
   const [lastReadPage, setLastReadPage] = useState(1);
   const [bookmarks, setBookmarks] = useState<any[]>([]);
@@ -22,32 +24,32 @@ export default function QuranPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Auth check
+        const meRes = await hidayahFetch('/api/auth/me');
+        if (!meRes.ok) {
+          router.push('/auth');
+          return;
+        }
+
         const juzsData = await getJuzs();
         const allJuzs = Array.from(new Map(juzsData.map(item => [item.juz_number, item])).values())
           .sort((a, b) => a.juz_number - b.juz_number);
         setJuzs(allJuzs);
 
-        // Fetch user data
-        const meRes = await hidayahFetch(`${HIDAYAH_API_URL}/api/auth/me`);
-        if (meRes.ok) {
-          const profileRes = await hidayahFetch(`${HIDAYAH_API_URL}/api/users/profile`);
-          if (profileRes.ok) {
-
-            const profileData = await profileRes.json();
-            setLastReadPage(profileData.user.lastReadPage || 1);
-            setBookmarks(profileData.user.bookmarks || []);
-          }
+        const profileRes = await hidayahFetch('/api/users/profile');
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setLastReadPage(profileData.user.lastReadPage || 1);
+          setBookmarks(profileData.user.bookmarks || []);
         }
-
       } catch (e) {
         console.error("Quran page data fetch error:", e);
       } finally {
-
         setIsLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [router]);
 
   if (isLoading) {
     return (
@@ -58,12 +60,12 @@ export default function QuranPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--color-hidayah-primary)] text-[var(--color-hidayah-dark)] p-6 sm:p-12 transition-colors duration-500">
+    <main className="min-h-screen bg-[var(--color-hidayah-primary)] text-[var(--color-hidayah-dark)] p-6 sm:p-12 pb-24">
       <div className="max-w-4xl mx-auto">
-        <header className="mb-12 text-center relative">
+        <header className="mb-12 text-center relative pt-4">
           <Link 
             href="/community" 
-            className="absolute left-0 top-0 p-2 hover:bg-[var(--color-hidayah-secondary)] rounded-full transition-colors"
+            className="absolute left-0 top-4 p-2 hover:bg-[var(--color-hidayah-secondary)] rounded-full transition-colors"
           >
             <ArrowLeft className="w-6 h-6 text-[var(--color-hidayah-dark)]/60" />
           </Link>

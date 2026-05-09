@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
@@ -7,7 +8,7 @@ import User from '@/models/User';
 
 export async function POST() {
   try {
-    const cookieStore = await cookies();
+    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
     const token = cookieStore.get('hidayah_token')?.value;
 
     if (!token) {

@@ -1,15 +1,29 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
+import Circle from '@/models/Circle';
 import CircleMessage from '@/models/CircleMessage';
 import User from '@/models/User';
 import { pusherServer } from '@/lib/pusher';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-async function getAuthUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('hidayah_token')?.value;
+async function getAuthUser(req: Request) {
+  let token = null;
+  try {
+    const cookieStore = (await cookies().catch(() => null));
+    token = cookieStore?.get('hidayah_token')?.value;
+  } catch (e) {}
+
+  if (!token) {
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
+
   if (!token) return null;
   try {
     const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
@@ -24,13 +38,29 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getAuthUser();
-    if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    let user = null;
+    try {
+      user = await getAuthUser(req);
+    } catch (e) {
+      // Ignore during build
+    }
+
+    if (!user) return NextResponse.json({ messages: [] });
 
     const { id } = await params;
     await dbConnect();
 
-    const messages = await CircleMessage.find({ circleId: id })
+    // Resolve circleId if it's a slug or title
+    let circleId = id;
+    if (!mongoose.isValidObjectId(id)) {
+      let circle = await Circle.findOne({ slug: id }).select('_id');
+      if (!circle) {
+        circle = await Circle.findOne({ title: { $regex: new RegExp(id.replace(/-/g, ' '), 'i') } }).select('_id');
+      }
+      if (circle) circleId = circle._id.toString();
+    }
+
+    const messages = await CircleMessage.find({ circleId })
       .sort({ createdAt: 1 })
       .populate('senderId', 'username profileImage')
       .populate({
@@ -58,10 +88,21 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getAuthUser();
+    const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
+    
+    // Resolve circleId if it's a slug or title
+    let circleId = id;
+    if (!mongoose.isValidObjectId(id)) {
+      await dbConnect();
+      let circle = await Circle.findOne({ slug: id }).select('_id');
+      if (!circle) {
+        circle = await Circle.findOne({ title: { $regex: new RegExp(id.replace(/-/g, ' '), 'i') } }).select('_id');
+      }
+      if (circle) circleId = circle._id.toString();
+    }
     
     // Use formData for larger payloads (Next.js JSON limit is 1MB)
     const formData = await req.formData();
@@ -71,7 +112,7 @@ export async function POST(
     const fileUrl = formData.get('fileUrl') as string;
     const fileName = formData.get('fileName') as string;
 
-    console.log(`Sending message to circle ${id} from user ${user.userId}`);
+    console.log(`Sending message to circle ${circleId} from user ${user.userId}`);
 
     if (!user || !user.userId) {
       return NextResponse.json({ message: 'User identity not found in token' }, { status: 401 });
@@ -84,7 +125,7 @@ export async function POST(
     await dbConnect();
 
     const newMessage = await CircleMessage.create({
-      circleId: id,
+      circleId: circleId,
       senderId: user.userId,
       text: text || "",
       imageUrl: imageUrl || null,

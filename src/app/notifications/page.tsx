@@ -104,27 +104,27 @@ export default function NotificationsPage() {
                       layout
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="bg-[var(--color-hidayah-secondary)] p-5 rounded-[2.5rem] border border-[var(--color-hidayah-gold)]/20 shadow-sm shadow-gold/5 flex flex-col gap-4"
+                      className="bg-[var(--color-hidayah-secondary)] p-4 rounded-[2rem] border border-[var(--color-hidayah-gold)]/20 shadow-sm shadow-gold/5 flex flex-col gap-3"
                     >
                       <div className="flex items-start gap-4">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${req.type === 'circle_invite' ? 'bg-[var(--color-hidayah-gold)]/10 text-[var(--color-hidayah-gold)] border-[var(--color-hidayah-gold)]/20' : 'bg-blue-50 text-blue-500 border-blue-100'}`}>
-                          {req.type === 'circle_invite' ? <Users className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${req.type === 'circle_invite' ? 'bg-[var(--color-hidayah-gold)]/10 text-[var(--color-hidayah-gold)] border-[var(--color-hidayah-gold)]/20' : 'bg-blue-50 text-blue-500 border-blue-100'}`}>
+                          {req.type === 'circle_invite' ? <Users className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[var(--color-hidayah-dark)] leading-relaxed">
+                          <p className="text-xs text-[var(--color-hidayah-dark)] leading-relaxed">
                             {req.type === 'circle_invite' ? (
                               <>
-                                <span className="font-bold">@{req.senderName}</span> invited you to join the 
-                                <span className="font-serif font-bold text-[var(--color-hidayah-gold)] ml-1">"{req.circleTitle}"</span> Circle.
+                                <span className="font-bold">@{req.senderName}</span> invited you to join 
+                                <span className="font-serif font-bold text-[var(--color-hidayah-gold)] ml-1">"{req.circleTitle}"</span>.
                               </>
                             ) : (
                               <>
-                                <span className="font-bold">@{req.senderName}</span> requested to join your 
-                                <span className="font-serif font-bold text-blue-600 ml-1">"{req.circleTitle}"</span> Circle.
+                                <span className="font-bold">@{req.senderName}</span> requested to join 
+                                <span className="font-serif font-bold text-blue-600 ml-1">"{req.circleTitle}"</span>.
                               </>
                             )}
                           </p>
-                          <p className="text-[10px] font-medium opacity-30 mt-1 uppercase tracking-wider">
+                          <p className="text-[9px] font-medium opacity-30 mt-0.5 uppercase tracking-wider">
                             {new Date(req.createdAt).toLocaleDateString()}
                           </p>
                         </div>
@@ -134,17 +134,17 @@ export default function NotificationsPage() {
                         <button 
                           onClick={() => handleResponse(req._id, 'accept')}
                           disabled={isResponding === req._id}
-                          className="flex-1 bg-[var(--color-hidayah-dark)] text-[var(--color-hidayah-primary)] py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50"
+                          className="flex-1 bg-[var(--color-hidayah-dark)] text-[var(--color-hidayah-primary)] py-2.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50"
                         >
-                          {isResponding === req._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                          {req.type === 'circle_invite' ? 'Join Circle' : 'Accept Request'}
+                          {isResponding === req._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                          {req.type === 'circle_invite' ? 'Join' : 'Accept'}
                         </button>
                         <button 
                           onClick={() => handleResponse(req._id, 'deny')}
                           disabled={isResponding === req._id}
-                          className="flex-1 bg-[var(--color-hidayah-primary)] border border-[var(--color-hidayah-border)]/30 text-[var(--color-hidayah-dark)] py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[var(--color-hidayah-secondary)] transition-all active:scale-95 disabled:opacity-50"
+                          className="flex-1 bg-[var(--color-hidayah-primary)] border border-[var(--color-hidayah-border)]/30 text-[var(--color-hidayah-dark)] py-2.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-2 hover:bg-[var(--color-hidayah-secondary)] transition-all active:scale-95 disabled:opacity-50"
                         >
-                          <X className="w-4 h-4 opacity-40" />
+                          <X className="w-3 h-3 opacity-40" />
                           Deny
                         </button>
                       </div>
@@ -159,7 +159,7 @@ export default function NotificationsPage() {
                 <Bell className="w-3.5 h-3.5" /> Recent Activity
               </h2>
               {otherNotifications.length > 0 ? (
-                <div className="bg-[var(--color-hidayah-secondary)] rounded-[2.5rem] border border-[var(--color-hidayah-border)]/10 shadow-sm overflow-hidden divide-y divide-[var(--color-hidayah-border)]/5">
+                <div className="bg-[var(--color-hidayah-secondary)] rounded-[2rem] border border-[var(--color-hidayah-border)]/10 shadow-sm overflow-hidden divide-y divide-[var(--color-hidayah-border)]/5">
                   {otherNotifications.map((notification) => {
                     // Logic for post thumbnail
                     const hasThumbnail = notification.moodTag && notification.backdropVariant !== undefined;
@@ -170,21 +170,26 @@ export default function NotificationsPage() {
                       <motion.div 
                         key={notification._id}
                         layout
-                        className={`flex items-center justify-between p-3 sm:p-4 transition-colors hover:bg-[var(--color-hidayah-secondary)]/30 ${!notification.isRead ? 'bg-[var(--color-hidayah-gold)]/5' : ''}`}
+                        className={`flex items-center justify-between p-2.5 transition-colors hover:bg-[var(--color-hidayah-secondary)]/30 ${!notification.isRead ? 'bg-[var(--color-hidayah-gold)]/5' : ''}`}
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-10 h-10 rounded-2xl bg-[var(--color-hidayah-secondary)] flex items-center justify-center font-bold text-[var(--color-hidayah-dark)]/60 shrink-0 border border-white text-sm shadow-sm">
+                          <div className="w-9 h-9 rounded-xl bg-[var(--color-hidayah-secondary)] flex items-center justify-center font-bold text-[var(--color-hidayah-dark)]/60 shrink-0 border border-white text-xs shadow-sm">
                             {notification.senderName.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[var(--color-hidayah-dark)]/80 leading-tight">
+                            <p className="text-[13px] text-[var(--color-hidayah-dark)]/80 leading-tight">
                               <span className="font-bold text-[var(--color-hidayah-dark)]">@{notification.senderName}</span>{' '}
                               {notification.type === 'like' ? 'liked your reflection.' : 
                                notification.type === 'comment' ? 'commented on your reflection.' :
                                notification.type === 'circle_invite' ? `invitation ${notification.status}.` : 
                                notification.type === 'circle_request' ? `join request ${notification.status}.` : 'interacted with you.'}
                             </p>
-                            <p className="text-[9px] font-medium opacity-30 mt-1 uppercase tracking-wider">
+                            {notification.type === 'comment' && notification.commentText && (
+                              <p className="text-[11px] text-[var(--color-hidayah-dark)]/60 mt-1 line-clamp-1 italic italic">
+                                "{notification.commentText}"
+                              </p>
+                            )}
+                            <p className="text-[8px] font-medium opacity-30 mt-0.5 uppercase tracking-wider">
                               {new Date(notification.createdAt).toLocaleDateString()}
                             </p>
                           </div>
@@ -194,7 +199,7 @@ export default function NotificationsPage() {
                         <div className="ml-4 shrink-0 flex items-center gap-3">
                           {hasThumbnail ? (
                             <div 
-                              className="w-14 h-14 rounded-xl border border-white shadow-sm overflow-hidden flex items-center justify-center p-2 relative group"
+                              className="w-11 h-11 rounded-lg border border-white shadow-sm overflow-hidden flex items-center justify-center p-1.5 relative group"
                               style={{ 
                                 backgroundImage: gradient,
                                 backgroundColor: colors ? colors[4] : 'transparent' 
@@ -202,7 +207,7 @@ export default function NotificationsPage() {
                             >
                               {/* Dark overlay for text legibility */}
                               <div className="absolute inset-0 bg-black/20" />
-                              <span className="relative z-10 text-[8px] leading-[10px] text-center font-serif text-white line-clamp-3 italic">
+                              <span className="relative z-10 text-[7px] leading-[8px] text-center font-serif text-white line-clamp-3 italic">
                                 "{notification.postExcerpt}"
                               </span>
                             </div>

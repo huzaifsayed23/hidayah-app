@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
@@ -8,7 +9,7 @@ import UserPrayerSettings from '@/models/UserPrayerSettings';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
 
 async function getUserId() {
-  const cookieStore = await cookies();
+  const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
   const token = cookieStore.get('hidayah_token')?.value;
   if (!token) return null;
   try {

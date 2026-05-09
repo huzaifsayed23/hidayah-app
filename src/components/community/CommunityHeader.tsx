@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import Link from 'next/link';
 import { getPusherClient } from '@/lib/pusher';
-import { HIDAYAH_API_URL } from '@/lib/api';
+import { hidayahFetch } from '@/lib/api';
 
 
 interface CommunityHeaderProps {
@@ -15,17 +15,19 @@ interface CommunityHeaderProps {
 }
 
 export default function CommunityHeader({ userName, onSearch }: CommunityHeaderProps) {
+  const [mounted, setMounted] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isShaking, setIsShaking] = useState(false);
   const [hasUnread, setHasUnread] = useState(true);
 
   useEffect(() => {
+    setMounted(true);
     let channel: any;
 
     const setupPusher = async () => {
       try {
-        const res = await fetch(`${HIDAYAH_API_URL}/api/auth/me`);
+        const res = await hidayahFetch('/api/auth/me');
         const userData = await res.json();
 
         
@@ -59,6 +61,8 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
     };
   }, []);
 
+  if (!mounted) return null;
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
     setSearchQuery(q);
@@ -66,8 +70,8 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
   };
 
   return (
-    <header className="mb-8">
-      <div className="flex items-center justify-between mb-4">
+    <header className="sticky top-0 z-40 bg-[var(--color-hidayah-primary)]/80 backdrop-blur-xl -mx-4 px-4 py-4 mb-6 border-b border-[var(--color-hidayah-border)]/10">
+      <div className="flex items-center justify-between mb-0">
         <AnimatePresence mode="wait">
           {!isSearching ? (
             <motion.div 

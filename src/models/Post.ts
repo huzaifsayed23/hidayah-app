@@ -38,6 +38,10 @@ const PostSchema = new Schema({
     type: String,
     default: null,
   },
+  customBackgroundImage: {
+    type: String,
+    default: null,
+  },
   verse: {
     surah: String,
     ayah: Number,
@@ -83,6 +87,8 @@ const PostSchema = new Schema({
 });
 
 PostSchema.index({ userId: 1, createdAt: -1 });
+PostSchema.index({ isVisible: 1, createdAt: -1 });
+
 
 // Delete the existing model to ensure schema changes are applied during hot-reload
 if (mongoose.models.Post) {

@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI!;
+const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+if (!MONGODB_URI && process.env.NODE_ENV === 'production' && !process.env.NEXT_PHASE) {
+  // We only throw if we are in production and NOT in a build phase where evaluation happens
+  // However, since we can't easily detect NEXT_PHASE here without config, let's just make it a warning
+  // or only throw when dbConnect is actually called.
 }
 
 /**
@@ -18,6 +20,10 @@ if (!cached) {
 }
 
 async function dbConnect() {
+  if (!MONGODB_URI) {
+    throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+  }
+
   if (cached.conn) {
     return cached.conn;
   }

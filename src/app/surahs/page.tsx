@@ -43,7 +43,7 @@ export default function SurahListPage() {
       {/* Header Section */}
       <header className="sticky top-0 z-20 bg-[var(--color-hidayah-primary)]/90 backdrop-blur-md border-b border-hidayah-border/40 px-6 py-6">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <Link href="/community" className="p-2 hover:bg-[var(--color-hidayah-secondary)] rounded-full transition-colors">
+          <Link href="/dashboard" className="p-2 hover:bg-[var(--color-hidayah-secondary)] rounded-full transition-colors">
             <ArrowLeft className="w-6 h-6 text-hidayah-dark/60" />
           </Link>
           <div className="flex-1 text-center">
@@ -75,7 +75,7 @@ export default function SurahListPage() {
             <p className="text-hidayah-dark/50 animate-pulse">Opening the library...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
             <AnimatePresence mode="popLayout">
               {filteredChapters.map((chapter, index) => (
                 <motion.div
@@ -87,28 +87,24 @@ export default function SurahListPage() {
                 >
                   <Link
                     href={`/surahs/${chapter.id}`}
-                    className="group flex flex-col items-center gap-2 p-3 sm:p-4 bg-[var(--color-hidayah-secondary)] rounded-[24px] border border-hidayah-border/30 shadow-sm hover:shadow-xl hover:shadow-hidayah-gold/5 transition-all duration-300 text-center h-full"
+                    className="group flex flex-col items-center gap-1.5 p-2 sm:p-3 bg-[var(--color-hidayah-secondary)] rounded-[20px] border border-hidayah-border/30 shadow-sm hover:shadow-lg hover:shadow-hidayah-gold/5 transition-all duration-300 text-center h-full"
                   >
-                    {/* Number Box */}
-                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl bg-[var(--color-hidayah-primary)] border border-hidayah-border/30 text-hidayah-gold font-serif font-bold group-hover:bg-hidayah-gold group-hover:text-[var(--color-hidayah-primary)] transition-colors duration-300 text-xs">
+                    {/* Number Box - Made smaller */}
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center rounded-lg bg-[var(--color-hidayah-primary)] border border-hidayah-border/30 text-hidayah-gold font-serif font-bold group-hover:bg-hidayah-gold group-hover:text-[var(--color-hidayah-primary)] transition-colors duration-300 text-[10px]">
                       {chapter.id}
                     </div>
-
-                    {/* Names and Info */}
+                    
+                    {/* Names and Info - Tightened spacing */}
                     <div className="flex-1 min-w-0 w-full">
-                      <h3 className="text-sm sm:text-base font-bold text-hidayah-dark truncate mb-1">
+                      <h3 className="text-[11px] sm:text-[13px] font-bold text-hidayah-dark truncate leading-tight">
                         {chapter.name_simple}
                       </h3>
-                      <div className="text-lg font-arabic text-[var(--color-hidayah-dark)] group-hover:text-hidayah-gold transition-colors mb-1">
+                      <div className="text-sm sm:text-base font-arabic text-[var(--color-hidayah-dark)] group-hover:text-hidayah-gold transition-colors my-0.5">
                         {chapter.name_arabic}
                       </div>
-                      <div className="flex flex-col items-center gap-1 text-[10px] sm:text-xs text-[var(--color-hidayah-dark)]/50">
-                        <span className="truncate w-full">{chapter.translated_name.name}</span>
-                        <div className="flex items-center gap-1">
-                          <span className="capitalize">{chapter.revelation_place}</span>
-                          <span className="w-0.5 h-0.5 rounded-full bg-hidayah-border" />
-                          <span>{chapter.verses_count} Ayahs</span>
-                        </div>
+                      <div className="flex flex-col items-center gap-0.5 text-[8px] sm:text-[10px] text-[var(--color-hidayah-dark)]/40">
+                        <span className="truncate w-full leading-tight">{chapter.translated_name.name}</span>
+                        <span className="capitalize">{chapter.verses_count} Ayahs</span>
                       </div>
                     </div>
                   </Link>

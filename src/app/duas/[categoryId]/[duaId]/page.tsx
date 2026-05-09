@@ -1,6 +1,11 @@
-export const dynamic = 'force-dynamic';
+import { duas } from "@/data/duas";
+
+export function generateStaticParams() {
+  return duas.map((d) => ({ categoryId: d.categoryId, duaId: d.id }));
+}
+
 import Link from "next/link";
-import { categories, duas } from "@/data/duas";
+import { categories } from "@/data/duas";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -31,28 +36,22 @@ export default async function DuaDetailPage({
         </header>
 
         <div className="flex-grow flex flex-col items-center justify-center space-y-12 w-full">
-          {/* Arabic Text (IndoPak Readability) */}
-          <div 
-            className="w-full text-center px-4"
-            dir="rtl"
-          >
+          <div className="w-full text-center px-4" dir="rtl">
             <p className="font-arabic text-3xl sm:text-4xl md:text-5xl text-[var(--color-hidayah-dark)] leading-[2.5] break-words align-middle" style={{ wordSpacing: '0.15em' }}>
               {dua.arabic}
             </p>
           </div>
 
           <div className="w-full max-w-2xl space-y-8 px-4 text-center">
-            {/* Transliteration */}
             <div className="space-y-2">
               <h3 className="text-xs tracking-[0.2em] uppercase text-hidayah-gold/80 font-medium">Pronunciation</h3>
               <p className="text-lg sm:text-xl text-[var(--color-hidayah-dark)]/90 font-light italic leading-relaxed">
-                "{dua.transliteration}"
+                &ldquo;{dua.transliteration}&rdquo;
               </p>
             </div>
 
             <div className="w-16 h-px bg-[var(--color-hidayah-dark)]/10 mx-auto" />
 
-            {/* Translation */}
             <div className="space-y-2">
               <h3 className="text-xs tracking-[0.2em] uppercase text-hidayah-gold/80 font-medium">Translation</h3>
               <p className="text-lg sm:text-xl text-[var(--color-hidayah-dark)]/80 font-light leading-relaxed">
@@ -62,7 +61,6 @@ export default async function DuaDetailPage({
           </div>
         </div>
 
-        {/* Reference */}
         <footer className="mt-16 w-full text-center border-t border-hidayah-border/50 pt-8 pb-4">
           <p className="text-sm text-[var(--color-hidayah-dark)]/40 tracking-wider">
             {dua.reference}

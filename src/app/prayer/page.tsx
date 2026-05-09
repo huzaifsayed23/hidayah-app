@@ -111,7 +111,7 @@ export default function PrayerDetailsPage() {
     <div className="min-h-screen bg-[var(--color-hidayah-primary)] pb-12">
       <header className="px-6 py-8 flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <button onClick={() => router.back()} className="p-2 hover:bg-[var(--color-hidayah-secondary)] rounded-full transition-colors">
+          <button onClick={() => router.push('/dashboard')} className="p-2 hover:bg-[var(--color-hidayah-secondary)] rounded-full transition-colors">
             <ArrowLeft className="w-6 h-6 text-[var(--color-hidayah-dark)]" />
           </button>
           <div className="flex flex-col items-center">

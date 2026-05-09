@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Plus, Search, MessageSquare, Globe, Lock, Loader2, Bell, Trash2, LogOut, MoreVertical, X, Check } from 'lucide-react';
+import { Users, Plus, Search, MessageSquare, Globe, Lock, Loader2, Bell, Trash2, LogOut, MoreVertical, X, Check, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { hidayahFetch } from '@/lib/api';
+import BottomNav from '@/components/BottomNav';
 
 
 export default function CirclesPage() {
@@ -22,6 +23,11 @@ export default function CirclesPage() {
 
   useEffect(() => {
     const fetchMe = async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('hidayah_token') : null;
+      if (!token) {
+        router.push('/auth');
+        return;
+      }
       const res = await hidayahFetch('/api/auth/me');
       const data = await res.json();
       if (res.ok) setCurrentUser(data);
@@ -144,18 +150,22 @@ export default function CirclesPage() {
 
   return (
     <div className="min-h-screen pb-24 max-w-2xl mx-auto px-4 sm:px-6 pt-8">
-      <header className="flex items-center justify-between mb-8">
-        <div>
+      <header className="flex items-center gap-4 mb-8">
+        <Link 
+          href="/community"
+          className="p-2.5 rounded-full hover:bg-[var(--color-hidayah-secondary)] transition-colors border border-transparent hover:border-[var(--color-hidayah-border)]/30"
+        >
+          <ArrowLeft className="w-5 h-5 text-[var(--color-hidayah-dark)]" />
+        </Link>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold font-serif text-[var(--color-hidayah-dark)]">Circles</h1>
           <p className="text-sm text-[var(--color-hidayah-dark)] opacity-70 mt-1 leading-relaxed">
             Thoughtful community discussions.
           </p>
         </div>
-        <div className="flex gap-2">
           <button className="p-2.5 rounded-full hover:bg-[var(--color-hidayah-secondary)] transition-colors">
             <Search className="w-5 h-5 text-[var(--color-hidayah-dark)] opacity-70" />
           </button>
-        </div>
       </header>
 
       <Link 
@@ -212,7 +222,7 @@ export default function CirclesPage() {
           filteredCircles.map((circle) => (
             <div key={circle._id} className="relative group/item">
               <Link
-                href={activeTab === 'my' ? `/community/${circle._id}` : '#'}
+                href={activeTab === 'my' ? `/community/${circle.slug || circle._id}` : '#'}
                 onClick={(e) => activeTab === 'discover' && e.preventDefault()}
                 onContextMenu={(e) => activeTab === 'my' && handleContextMenu(e, circle)}
                 onTouchStart={() => activeTab === 'my' && handleTouchStart(circle)}
@@ -330,6 +340,8 @@ export default function CirclesPage() {
           </>
         )}
       </AnimatePresence>
+      
+      <BottomNav />
     </div>
   );
 }

@@ -29,6 +29,15 @@ const UserSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Post'
   }],
+  savedHadiths: [{
+    bookSlug: String,
+    bookName: String,
+    hadithNumber: String,
+    hadithArabic: String,
+    hadithEnglish: String,
+    status: String,
+    addedAt: { type: Date, default: Date.now }
+  }],
   lastReadPage: {
     type: Number,
     default: 1,

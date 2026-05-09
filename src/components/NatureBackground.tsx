@@ -59,7 +59,7 @@ export const NatureBackground: React.FC<NatureBackgroundProps> = ({
       <MistLayers themeId={themeId} />
 
       {/* 4. Lighting Layer / Glow */}
-      <div className="absolute inset-0 z-20 pointer-events-none opacity-40 bg-gradient-to-b from-transparent via-white/5 to-black/20" />
+      <div className="absolute inset-0 z-20 pointer-events-none opacity-40 bg-gradient-to-b from-transparent via-transparent to-black/20" />
 
       {/* 4b. Sun Layer for Blazing Sunset */}
       {themeId === 'blazing_sunset' && (
@@ -258,7 +258,7 @@ const MistLayers = ({ themeId }: { themeId: string }) => {
   return (
     <div className="absolute inset-0 z-15 pointer-events-none overflow-hidden">
       <motion.div 
-        className="absolute bottom-0 left-0 w-[200%] h-1/2 bg-gradient-to-t from-white/20 to-transparent blur-3xl"
+        className="absolute bottom-0 left-0 w-[200%] h-1/2 bg-gradient-to-t from-white/5 to-transparent blur-3xl"
         animate={{
           x: ['-50%', '0%'],
         }}
@@ -269,7 +269,7 @@ const MistLayers = ({ themeId }: { themeId: string }) => {
         }}
       />
       <motion.div 
-        className="absolute bottom-10 left-[-50%] w-[200%] h-1/3 bg-gradient-to-t from-white/10 to-transparent blur-2xl"
+        className="absolute bottom-10 left-[-50%] w-[200%] h-1/3 bg-gradient-to-t from-white/5 to-transparent blur-2xl"
         animate={{
           x: ['0%', '-50%'],
         }}

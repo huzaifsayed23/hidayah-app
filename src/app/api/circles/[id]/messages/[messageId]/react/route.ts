@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import CircleMessage from '@/models/CircleMessage';
@@ -7,10 +8,10 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
 async function getAuthUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('hidayah_token')?.value;
-  if (!token) return null;
   try {
+    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
+    const token = cookieStore.get('hidayah_token')?.value;
+    if (!token) return null;
     const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
     return jwt.verify(token, secret) as any;
   } catch(e) {

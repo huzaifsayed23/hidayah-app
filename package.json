@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:mobile": "cross-env BUILD_MODE=mobile next build && npx cap sync android",
+    "build:vercel": "next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -33,6 +35,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",

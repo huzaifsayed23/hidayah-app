@@ -1,15 +1,18 @@
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return []; }
+
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
+import Circle from '@/models/Circle';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
 async function getAuthUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('hidayah_token')?.value;
-  if (!token) return null;
   try {
+    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
+    const token = cookieStore.get('hidayah_token')?.value;
+    if (!token) return null;
     const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
     return jwt.verify(token, secret) as any;
   } catch(e) {
@@ -28,15 +31,25 @@ export async function POST(
     const { id } = await params;
     await dbConnect();
 
+    // Resolve circleId if it's a slug or title
+    let circleId = id;
+    if (!mongoose.isValidObjectId(id)) {
+      let circle = await Circle.findOne({ slug: id }).select('_id');
+      if (!circle) {
+        circle = await Circle.findOne({ title: { $regex: new RegExp(id.replace(/-/g, ' '), 'i') } }).select('_id');
+      }
+      if (circle) circleId = circle._id.toString();
+    }
+
     const dbUser = await User.findById(user.userId);
     if (!dbUser) return NextResponse.json({ message: 'User not found' }, { status: 404 });
 
-    const isMuted = dbUser.mutedCircles.includes(id as any);
+    const isMuted = dbUser.mutedCircles.includes(circleId as any);
 
     if (isMuted) {
-      dbUser.mutedCircles = dbUser.mutedCircles.filter((cId: any) => cId.toString() !== id);
+      dbUser.mutedCircles = dbUser.mutedCircles.filter((cId: any) => cId.toString() !== circleId);
     } else {
-      dbUser.mutedCircles.push(id as any);
+      dbUser.mutedCircles.push(circleId as any);
     }
 
     await dbUser.save();
@@ -59,10 +72,20 @@ export async function GET(
     const { id } = await params;
     await dbConnect();
 
+    // Resolve circleId if it's a slug or title
+    let circleId = id;
+    if (!mongoose.isValidObjectId(id)) {
+      let circle = await Circle.findOne({ slug: id }).select('_id');
+      if (!circle) {
+        circle = await Circle.findOne({ title: { $regex: new RegExp(id.replace(/-/g, ' '), 'i') } }).select('_id');
+      }
+      if (circle) circleId = circle._id.toString();
+    }
+
     const dbUser = await User.findById(user.userId);
     if (!dbUser) return NextResponse.json({ message: 'User not found' }, { status: 404 });
 
-    const isMuted = dbUser.mutedCircles.includes(id as any);
+    const isMuted = dbUser.mutedCircles.includes(circleId as any);
 
     return NextResponse.json({ isMuted });
   } catch (error) {
