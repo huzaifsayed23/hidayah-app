@@ -6,10 +6,17 @@ import { cookies } from 'next/headers';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
-    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-    const token = cookieStore.get('hidayah_token')?.value;
+    const cookieStore = (await cookies().catch(() => null));
+    let token = cookieStore?.get('hidayah_token')?.value;
+
+    if (!token) {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
 
     if (!token) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

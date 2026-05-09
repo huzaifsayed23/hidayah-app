@@ -87,7 +87,7 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
 
       {/* Mood Filter (Hidden when searching members) */}
       {!(searchQuery.length > 0 && activeTab === 'users') && (
-        <div className="flex flex-wrap gap-2.5 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-2.5 mb-8 horizontal-slider hide-scrollbar pb-2">
           {moods.map((m) => (
             <Link
               key={m}

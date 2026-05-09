@@ -44,13 +44,19 @@ async function universalFetch(url: string, options: RequestInit = {}) {
         statusText: response.status.toString(),
         headers: new Headers(response.headers as any),
         json: async () => {
-          if (!response.data) return null;
+          if (!response.data) return { message: 'No data received from server' };
           if (typeof response.data === 'string') {
             try {
               return JSON.parse(response.data);
             } catch (e) {
               console.error('Failed to parse JSON string:', response.data);
-              return { error: 'Invalid JSON', raw: response.data };
+              // If it's HTML (likely a server crash or 404), extract a snippet or provide a better message
+              const isHtml = response.data.trim().startsWith('<');
+              return { 
+                message: isHtml ? `Server returned HTML instead of JSON (likely a crash or incorrect path). Status: ${response.status}` : 'Invalid JSON response from server',
+                error: 'Invalid JSON', 
+                raw: response.data.slice(0, 200) 
+              };
             }
           }
           return response.data;

@@ -2,7 +2,7 @@
 
 import { Logo } from "@/components/Logo";
 import Link from "next/link";
-import { BookOpen, Heart, Users, User as UserIcon, ArrowLeft, MessageSquare, Key, Clock, Moon, GraduationCap } from "lucide-react";
+import { BookOpen, Heart, Users, User as UserIcon, ArrowLeft, MessageSquare, Key, Clock, Moon, GraduationCap, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -39,6 +39,7 @@ export default function DashboardPage() {
     { label: "Daily Hadith", href: "/hadith", icon: Moon },
     { label: "Islamic Quiz", href: "/quiz", icon: GraduationCap },
     { label: "Prayer Times", href: "/prayer", icon: Clock },
+    { label: "About Hidayah", href: "/about", icon: Sparkles },
   ];
 
   if (isAdmin) {

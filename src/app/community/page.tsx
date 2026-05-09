@@ -83,7 +83,7 @@ function CommunityContent() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-hidayah-primary)]">
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-0 pb-[120px] custom-scrollbar max-w-2xl mx-auto w-full">
+      <div className="flex-1 mobile-scroll-container px-4 sm:px-6 pt-0 pb-[120px] custom-scrollbar max-w-2xl mx-auto w-full">
         <CommunityFeed 
           initialPosts={posts} 
           userName={userName} 

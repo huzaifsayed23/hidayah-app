@@ -1,4 +1,4 @@
-export function generateStaticParams() { return []; }
+export function generateStaticParams() { return [{ id: '1', messageId: '1' }]; }
 
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';

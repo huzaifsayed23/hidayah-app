@@ -54,7 +54,11 @@ export default function AuthPage() {
         : { username, email, password };
 
       // Debug Alert for Mobile Connectivity Testing
-      try { alert('Connecting to: ' + endpoint); } catch(e) {}
+      try { 
+        const fullTarget = HIDAYAH_API_URL + endpoint;
+        console.log('Connecting to:', fullTarget);
+        // alert('Connecting to: ' + fullTarget); 
+      } catch(e) {}
 
       const res = await hidayahFetch(endpoint, {
         method: "POST",
@@ -73,7 +77,7 @@ export default function AuthPage() {
         // Log the full error data for debugging
         console.error("Auth failed response:", data);
         
-        const errorMessage = data.details || data.message || "Authentication failed. Please check your credentials.";
+        const errorMessage = data.message || data.details || data.error || `Error ${res.status}: Failed to connect to authentication service.`;
         setError(errorMessage);
         setIsLoading(false);
         return;

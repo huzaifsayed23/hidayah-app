@@ -136,7 +136,7 @@ export default function CreateReflectionPage() {
         num = n.trim();
       }
 
-      const HADITH_API_KEY = '$2y$10$3SYRpmT3X6dkewYtNNK0cuONUsnyDPe4IfonUpkH5rIpBJvaSsPj2';
+      const HADITH_API_KEY = process.env.NEXT_PUBLIC_HADITH_API_KEY;
       const res = await fetch(`https://hadithapi.com/api/hadiths?apiKey=${HADITH_API_KEY}&hadithNumber=${num}&book=${book}`);
       const data = await res.json();
       
@@ -266,49 +266,85 @@ export default function CreateReflectionPage() {
             <section className="w-full space-y-6 sm:space-y-8 mb-6 sm:mb-8">
               
               {/* Category Slider */}
-              <div className="w-full horizontal-slider hide-scrollbar px-4 sm:px-6">
-                <div className="flex gap-2 sm:gap-3 pb-2">
-                  {SPIRITUAL_THEMES.map((key) => (
-                    <button
-                      key={key}
-                      onClick={() => { setSelectedSuite(key); setSelectedGradient(GRADIENT_LIBRARY[key].options[0]); }}
-                      className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-[20px] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] transition-all shrink-0 border ${
-                        selectedSuite === key 
-                          ? 'bg-white text-black border-white shadow-[0_15px_30px_-5px_rgba(255,255,255,0.3)] scale-105' 
-                          : 'bg-white/5 text-white/30 border-white/5 hover:bg-white/10'
-                      }`}
-                    >
-                      {key}
-                    </button>
-                  ))}
-                </div>
+              <div className="w-full flex horizontal-slider hide-scrollbar px-4 sm:px-6 justify-center">
+                {SPIRITUAL_THEMES.map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => { setSelectedSuite(key); setSelectedGradient(GRADIENT_LIBRARY[key].options[0]); }}
+                    className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-[20px] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] transition-all shrink-0 border ${
+                      selectedSuite === key 
+                        ? 'bg-white text-black border-white shadow-[0_15px_30px_-5px_rgba(255,255,255,0.3)] scale-105' 
+                        : 'bg-white/5 text-white/30 border-white/5 hover:bg-white/10'
+                    }`}
+                  >
+                    {key}
+                  </button>
+                ))}
               </div>
 
               {/* Sub-Mood Swatch Slider (Mood-specific) */}
-              <div className="w-full horizontal-slider hide-scrollbar px-6 sm:px-8">
-                <div className="flex gap-4 sm:gap-6 pb-6 items-start">
-                  {selectedSuite && GRADIENT_LIBRARY[selectedSuite]?.options?.map((grad) => (
+              <div className="w-full flex horizontal-slider hide-scrollbar px-6 sm:px-8 justify-center gap-4 sm:gap-6">
+                {selectedSuite && GRADIENT_LIBRARY[selectedSuite]?.options?.map((grad) => (
+                  <button
+                    key={grad.id}
+                    onClick={() => setSelectedGradient(grad)}
+                    className="flex flex-col items-center gap-1.5 sm:gap-2 shrink-0 group"
+                  >
+                    <div 
+                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all duration-700 relative p-[2px] shadow-[0_10px_20px_rgba(0,0,0,0.3)] ${
+                        selectedGradient.id === grad.id ? 'scale-110 shadow-2xl ring-2 ring-white/50' : 'opacity-20 grayscale group-hover:opacity-60'
+                      }`}
+                      style={{ 
+                        background: `linear-gradient(135deg, ${grad.colors[0]}, ${grad.colors[1]}, ${grad.colors[2]})`,
+                        boxShadow: selectedGradient.id === grad.id ? `0 0 25px ${grad.primary}50` : undefined
+                      }}
+                    >
+                      <div className="w-full h-full rounded-full bg-black/40 flex items-center justify-center relative overflow-hidden">
+                        <div className="absolute inset-0 opacity-100" style={{ background: `linear-gradient(135deg, ${grad.colors[0]}, ${grad.colors[1]}, ${grad.colors[2]})` }} />
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent opacity-40" />
+                        {selectedGradient.id === grad.id && <Sparkles className="w-4 h-4 text-white animate-pulse" />}
+                      </div>
+                    </div>
+                    <span className={`text-[5px] sm:text-[6px] font-bold uppercase tracking-[0.1em] text-center w-14 sm:w-16 leading-tight transition-all duration-500 ${
+                      selectedGradient.id === grad.id ? 'text-white' : 'text-white/40'
+                    }`}>
+                      {grad.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Premium Metallic Row (Common to every mood) */}
+              <div className="w-full mt-2 sm:mt-4">
+                <div className="px-6 sm:px-8 mb-3 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-white/10"></div>
+                  <h4 className="text-[7px] sm:text-[9px] font-bold uppercase tracking-[0.4em] text-white/60">Premium Metallic</h4>
+                  <div className="h-px flex-1 bg-white/10"></div>
+                </div>
+                <div className="w-full flex horizontal-slider hide-scrollbar px-6 sm:px-8 justify-center gap-4 sm:gap-6">
+                  {GRADIENT_LIBRARY["Premium"]?.options?.map((grad) => (
                     <button
                       key={grad.id}
                       onClick={() => setSelectedGradient(grad)}
                       className="flex flex-col items-center gap-1.5 sm:gap-2 shrink-0 group"
                     >
                       <div 
-                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all duration-700 relative p-[2px] shadow-[0_10px_20px_rgba(0,0,0,0.3)] ${
-                          selectedGradient.id === grad.id ? 'scale-110 shadow-2xl ring-2 ring-white/50' : 'opacity-20 grayscale group-hover:opacity-60'
+                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-700 relative p-[2px] shadow-[0_10px_20px_rgba(0,0,0,0.3)] ${
+                          selectedGradient.id === grad.id ? 'scale-110 shadow-2xl ring-2 ring-white/50' : 'opacity-40 grayscale group-hover:opacity-80'
                         }`}
                         style={{ 
                           background: `linear-gradient(135deg, ${grad.colors[0]}, ${grad.colors[1]}, ${grad.colors[2]})`,
-                          boxShadow: selectedGradient.id === grad.id ? `0 0 25px ${grad.primary}50` : undefined
+                          boxShadow: selectedGradient.id === grad.id ? `0 0 25px ${grad.primary}80` : undefined
                         }}
                       >
                         <div className="w-full h-full rounded-full bg-black/40 flex items-center justify-center relative overflow-hidden">
                           <div className="absolute inset-0 opacity-100" style={{ background: `linear-gradient(135deg, ${grad.colors[0]}, ${grad.colors[1]}, ${grad.colors[2]})` }} />
-                          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent opacity-40" />
-                          {selectedGradient.id === grad.id && <Sparkles className="w-4 h-4 text-white animate-pulse" />}
+                          {/* Glossy Metallic Shine */}
+                          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-70" />
+                          {selectedGradient.id === grad.id && <Sparkles className="w-3 h-3 text-white animate-pulse" />}
                         </div>
                       </div>
-                      <span className={`text-[5px] sm:text-[6px] font-bold uppercase tracking-[0.1em] text-center w-14 sm:w-16 leading-tight transition-all duration-500 ${
+                      <span className={`text-[5px] sm:text-[6px] font-bold uppercase tracking-[0.1em] text-center w-12 sm:w-14 leading-tight transition-all duration-500 ${
                         selectedGradient.id === grad.id ? 'text-white' : 'text-white/40'
                       }`}>
                         {grad.name}
@@ -318,52 +354,10 @@ export default function CreateReflectionPage() {
                 </div>
               </div>
 
-              {/* Premium Metallic Row (Common to every mood) */}
-              <div className="w-full mt-2 sm:mt-4">
-                <div className="px-6 sm:px-8 mb-3 flex items-center gap-3">
-                  <div className="h-px w-4 bg-white/10"></div>
-                  <h4 className="text-[7px] sm:text-[9px] font-bold uppercase tracking-[0.4em] text-white/60">Premium Metallic</h4>
-                  <div className="h-px flex-1 bg-white/10"></div>
-                </div>
-                <div className="w-full horizontal-slider hide-scrollbar px-6 sm:px-8">
-                  <div className="flex gap-4 sm:gap-6 pb-6 items-start justify-center">
-                    {GRADIENT_LIBRARY["Premium"]?.options?.map((grad) => (
-                      <button
-                        key={grad.id}
-                        onClick={() => setSelectedGradient(grad)}
-                        className="flex flex-col items-center gap-1.5 sm:gap-2 shrink-0 group"
-                      >
-                        <div 
-                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-700 relative p-[2px] shadow-[0_10px_20px_rgba(0,0,0,0.3)] ${
-                            selectedGradient.id === grad.id ? 'scale-110 shadow-2xl ring-2 ring-white/50' : 'opacity-40 grayscale group-hover:opacity-80'
-                          }`}
-                          style={{ 
-                            background: `linear-gradient(135deg, ${grad.colors[0]}, ${grad.colors[1]}, ${grad.colors[2]})`,
-                            boxShadow: selectedGradient.id === grad.id ? `0 0 25px ${grad.primary}80` : undefined
-                          }}
-                        >
-                          <div className="w-full h-full rounded-full bg-black/40 flex items-center justify-center relative overflow-hidden">
-                            <div className="absolute inset-0 opacity-100" style={{ background: `linear-gradient(135deg, ${grad.colors[0]}, ${grad.colors[1]}, ${grad.colors[2]})` }} />
-                            {/* Glossy Metallic Shine */}
-                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-70" />
-                            {selectedGradient.id === grad.id && <Sparkles className="w-3 h-3 text-white animate-pulse" />}
-                          </div>
-                        </div>
-                        <span className={`text-[5px] sm:text-[6px] font-bold uppercase tracking-[0.1em] text-center w-12 sm:w-14 leading-tight transition-all duration-500 ${
-                          selectedGradient.id === grad.id ? 'text-white' : 'text-white/40'
-                        }`}>
-                          {grad.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
               {/* Text Color Selection */}
               <div className="w-full mt-2 sm:mt-4">
                 <div className="px-6 sm:px-8 mb-3 flex items-center gap-3">
-                  <div className="h-px w-4 bg-white/10"></div>
+                  <div className="h-px flex-1 bg-white/10"></div>
                   <h4 className="text-[7px] sm:text-[9px] font-bold uppercase tracking-[0.4em] text-white/60">Text Color</h4>
                   <div className="h-px flex-1 bg-white/10"></div>
                 </div>
@@ -391,7 +385,7 @@ export default function CreateReflectionPage() {
               {/* Image Selection */}
               <div className="w-full mt-2 sm:mt-4">
                 <div className="px-6 sm:px-8 mb-3 flex items-center gap-3">
-                  <div className="h-px w-4 bg-white/10"></div>
+                  <div className="h-px flex-1 bg-white/10"></div>
                   <h4 className="text-[7px] sm:text-[9px] font-bold uppercase tracking-[0.4em] text-white/60">Reflection Background</h4>
                   <div className="h-px flex-1 bg-white/10"></div>
                 </div>

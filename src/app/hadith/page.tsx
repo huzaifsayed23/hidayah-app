@@ -30,7 +30,7 @@ export default function DailyHadithPage() {
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const HADITH_API_KEY = '$2y$10$3SYRpmT3X6dkewYtNNK0cuONUsnyDPe4IfonUpkH5rIpBJvaSsPj2';
+  const HADITH_API_KEY = process.env.NEXT_PUBLIC_HADITH_API_KEY;
 
   const fetchHadithFromBook = async (bookSlug: string, isNext = true) => {
     if (isNext && hadith) {

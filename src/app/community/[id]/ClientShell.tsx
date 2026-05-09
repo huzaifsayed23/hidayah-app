@@ -405,7 +405,7 @@ export default function CircleChatPage() {
       </header>
 
       {/* Message List */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 bg-[var(--color-hidayah-primary)] relative">
+      <div className="flex-1 mobile-scroll-container px-4 py-6 bg-[var(--color-hidayah-primary)] relative">
         <div className="max-w-4xl mx-auto space-y-6">
           {messages.map((msg) => {
             const isMe = String(msg.senderId?._id || msg.senderId) === String(currentUser?.id);
