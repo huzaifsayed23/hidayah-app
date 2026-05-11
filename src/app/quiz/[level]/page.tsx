@@ -13,14 +13,16 @@ export function generateStaticParams() {
   ];
 }
 
-export default function Page() { 
+export default async function Page({ params }: { params: Promise<{ level: string }> }) { 
+  const { level } = await params;
+  
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-hidayah-primary flex items-center justify-center">
         <div className="w-16 h-16 border-4 border-hidayah-gold border-t-transparent rounded-full animate-spin"></div>
       </div>
     }>
-      <ClientShell />
+      <ClientShell initialLevel={level} />
     </Suspense>
   ); 
 }

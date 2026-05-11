@@ -18,10 +18,10 @@ interface Question {
   category: string;
 }
 
-export default function QuizPage() {
+export default function QuizPage({ initialLevel }: { initialLevel?: string }) {
   const params = useParams();
   const router = useRouter();
-  const level = params.level as string;
+  const level = initialLevel || params.level as string;
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -312,4 +312,3 @@ export default function QuizPage() {
     </main>
   );
 }
-

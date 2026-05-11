@@ -12,10 +12,10 @@ function toArabicIndic(num: number | string): string {
   return num.toString().split("").map((c) => digits[parseInt(c)]).join("");
 }
 
-export default function SurahReaderPage() {
+export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: string }) {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
+  const id = initialSurahId || params.id as string;
   
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [verses, setVerses] = useState<Verse[]>([]);
