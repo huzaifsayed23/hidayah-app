@@ -1,6 +1,6 @@
-]; }
 
 import { NextResponse } from 'next/server';
+import { connection } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import QuizQuestion from '@/models/QuizQuestion';
 
@@ -8,6 +8,7 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ level: string }> }
 ) {
+  await connection().catch(() => {});
   try {
     try {
       await dbConnect();

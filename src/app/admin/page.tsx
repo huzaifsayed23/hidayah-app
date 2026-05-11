@@ -28,7 +28,7 @@ export default function AdminDashboard() {
 
         setDecoded(meData);
 
-        if (meData.email !== "huzaifsayed454@gmail.com") {
+        if (meData.email?.toLowerCase() !== "huzaifsayed454@gmail.com") {
           setIsAuthorized(false);
           setIsLoading(false);
           return;
@@ -81,90 +81,94 @@ export default function AdminDashboard() {
 
 
   return (
-    <main className="min-h-screen bg-[var(--color-hidayah-primary)] p-6 sm:p-12">
-      <div className="max-w-5xl mx-auto">
-        <Logo className="mb-8" />
-        
-        {/* Header */}
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-8 bg-[var(--color-hidayah-secondary)] p-6 rounded-[32px] border border-[var(--color-hidayah-border)]/50 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-[var(--color-hidayah-dark)] rounded-full flex items-center justify-center text-[var(--color-hidayah-gold)] shadow-md">
-              <Key className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-serif font-bold text-[var(--color-hidayah-dark)]">Admin Control Panel</h1>
-              <p className="text-sm font-medium text-[var(--color-hidayah-dark)]/60">Authorized as: {decoded.email}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link 
-              href="/admin/reports"
-              className={`flex items-center gap-3 px-6 py-4 rounded-full border transition-all ${pendingReportsCount > 0 ? 'bg-red-50 border-red-200 shadow-sm animate-pulse-slow' : 'bg-[var(--color-hidayah-primary)] border-[var(--color-hidayah-border)]/50 opacity-60'}`}
-            >
-              <ShieldAlert className={`w-5 h-5 ${pendingReportsCount > 0 ? 'text-red-500' : 'text-[var(--color-hidayah-gold)]'}`} />
-              <div className="flex flex-col">
-                <span className={`text-[10px] font-bold uppercase tracking-widest ${pendingReportsCount > 0 ? 'text-red-500' : 'text-[var(--color-hidayah-dark)]/40'}`}>Moderation</span>
-                <span className="font-bold text-[var(--color-hidayah-dark)] text-sm">{pendingReportsCount} Reports</span>
+    <main className="h-[100dvh] bg-[var(--color-hidayah-primary)] overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:p-12 custom-scrollbar">
+        <div className="max-w-5xl mx-auto space-y-6">
+          <Logo className="mb-4 sm:mb-8" />
+          
+          {/* Header */}
+          <header className="flex flex-col gap-6 mb-8 bg-[var(--color-hidayah-secondary)] p-5 sm:p-8 rounded-[2.5rem] border border-[var(--color-hidayah-border)]/50 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[var(--color-hidayah-dark)] rounded-full flex items-center justify-center text-[var(--color-hidayah-gold)] shadow-md shrink-0">
+                <Key className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-            </Link>
-            <div className="flex items-center gap-3 px-6 py-4 bg-[var(--color-hidayah-primary)] rounded-full border border-[var(--color-hidayah-border)]/50 shadow-sm">
-              <Users className="w-5 h-5 text-[var(--color-hidayah-gold)]" />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-hidayah-dark)]/40">Community</span>
-                <span className="font-bold text-[var(--color-hidayah-dark)] text-sm">{users.length} Users</span>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-serif font-bold text-[var(--color-hidayah-dark)]">Admin Control Panel</h1>
+                <p className="text-[10px] sm:text-sm font-medium text-[var(--color-hidayah-dark)]/60 line-clamp-1">Authorized as: {decoded.email}</p>
               </div>
             </div>
-          </div>
-        </header>
-
-        {/* Users Table */}
-        <div className="bg-[var(--color-hidayah-secondary)] rounded-[32px] overflow-hidden shadow-sm border border-[var(--color-hidayah-border)]/40 backdrop-blur-sm">
-          <div className="overflow-x-auto max-h-[600px] custom-scrollbar">
-            <table className="w-full text-left border-collapse min-w-[700px]">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-[var(--color-hidayah-secondary)] border-b border-[var(--color-hidayah-border)]/60 shadow-sm">
-                  <th className="p-4 font-bold text-xs text-[var(--color-hidayah-dark)]/70 uppercase tracking-widest">
-                    <span className="flex items-center gap-2"><Mail className="w-4 h-4 text-[var(--color-hidayah-gold)]"/> User</span>
-                  </th>
-                  <th className="p-4 font-bold text-xs text-[var(--color-hidayah-dark)]/70 uppercase tracking-widest">
-                    <span className="flex items-center gap-2"><Clock className="w-4 h-4 text-[var(--color-hidayah-gold)]"/> Joined</span>
-                  </th>
-                  <th className="p-4 font-bold text-xs text-[var(--color-hidayah-dark)]/70 uppercase tracking-widest">
-                    <span className="flex items-center gap-2"><Lock className="w-4 h-4 text-[var(--color-hidayah-gold)]"/> Security Key</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--color-hidayah-border)]/20">
-                {users.map((user: any) => (
-                  <tr key={user._id.toString()} className="hover:bg-[var(--color-hidayah-dark)]/[0.02] dark:hover:bg-white/[0.02] transition-colors group">
-                    <td className="p-4">
-                      <div className="font-bold text-[var(--color-hidayah-dark)] text-sm">{user.username || user.email.split('@')[0]}</div>
-                      <div className="text-[10px] text-[var(--color-hidayah-dark)]/50 font-medium">{user.email}</div>
-                    </td>
-                    <td className="p-4">
-                      <div className="text-xs font-semibold text-[var(--color-hidayah-dark)]/80">
-                        {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                      <div className="text-[10px] text-[var(--color-hidayah-dark)]/40">
-                        {new Date(user.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="bg-[var(--color-hidayah-primary)]/50 dark:bg-white/5 text-[var(--color-hidayah-dark)]/40 font-mono text-[10px] px-3 py-2 rounded-lg truncate max-w-[200px] border border-[var(--color-hidayah-border)]/30 group-hover:border-[var(--color-hidayah-gold)]/30 transition-colors" title={user.password}>
-                        {user.password}
-                      </div>
-                    </td>
+            
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center sm:gap-4">
+              <Link 
+                href="/admin/reports"
+                className={`flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl sm:rounded-full border transition-all flex-1 ${pendingReportsCount > 0 ? 'bg-red-50 border-red-200 shadow-sm animate-pulse-slow' : 'bg-[var(--color-hidayah-primary)] border-[var(--color-hidayah-border)]/50 opacity-60'}`}
+              >
+                <ShieldAlert className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${pendingReportsCount > 0 ? 'text-red-500' : 'text-[var(--color-hidayah-gold)]'}`} />
+                <div className="flex flex-col">
+                  <span className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-widest ${pendingReportsCount > 0 ? 'text-red-500' : 'text-[var(--color-hidayah-dark)]/40'}`}>Moderation</span>
+                  <span className="font-bold text-[var(--color-hidayah-dark)] text-xs sm:text-sm">{pendingReportsCount} Reports</span>
+                </div>
+              </Link>
+              <div className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-[var(--color-hidayah-primary)] rounded-2xl sm:rounded-full border border-[var(--color-hidayah-border)]/50 shadow-sm flex-1">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-[var(--color-hidayah-gold)]" />
+                <div className="flex flex-col">
+                  <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-[var(--color-hidayah-dark)]/40">Community</span>
+                  <span className="font-bold text-[var(--color-hidayah-dark)] text-xs sm:text-sm">{users.length} Users</span>
+                </div>
+              </div>
+            </div>
+          </header>
+  
+          {/* Users Table */}
+          <div className="bg-[var(--color-hidayah-secondary)] rounded-[2.5rem] overflow-hidden shadow-sm border border-[var(--color-hidayah-border)]/40 backdrop-blur-sm">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="bg-[var(--color-hidayah-secondary)] border-b border-[var(--color-hidayah-border)]/60 shadow-sm">
+                    <th className="p-4 font-bold text-[10px] text-[var(--color-hidayah-dark)]/70 uppercase tracking-widest">
+                      <span className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-[var(--color-hidayah-gold)]"/> User</span>
+                    </th>
+                    <th className="p-4 font-bold text-[10px] text-[var(--color-hidayah-dark)]/70 uppercase tracking-widest">
+                      <span className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-[var(--color-hidayah-gold)]"/> Joined</span>
+                    </th>
+                    <th className="p-4 font-bold text-[10px] text-[var(--color-hidayah-dark)]/70 uppercase tracking-widest">
+                      <span className="flex items-center gap-2"><Lock className="w-3.5 h-3.5 text-[var(--color-hidayah-gold)]"/> Key</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {users.length === 0 && (
-              <div className="p-12 text-center text-[var(--color-hidayah-dark)]/40 text-sm font-medium">
-                No sanctuary residents found.
-              </div>
-            )}
+                </thead>
+                <tbody className="divide-y divide-[var(--color-hidayah-border)]/20">
+                  {users.map((user: any) => (
+                    <tr key={user._id.toString()} className="hover:bg-black/[0.02] transition-colors group">
+                      <td className="p-4">
+                        <div className="font-bold text-[var(--color-hidayah-dark)] text-xs sm:text-sm">{user.username || user.email.split('@')[0]}</div>
+                        <div className="text-[9px] sm:text-[10px] text-[var(--color-hidayah-dark)]/50 font-medium">{user.email}</div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-[10px] sm:text-xs font-semibold text-[var(--color-hidayah-dark)]/80">
+                          {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+                        <div className="text-[9px] text-[var(--color-hidayah-dark)]/40">
+                          {new Date(user.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="bg-[var(--color-hidayah-primary)]/50 text-[var(--color-hidayah-dark)]/40 font-mono text-[9px] sm:text-[10px] px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg truncate max-w-[120px] sm:max-w-[200px] border border-[var(--color-hidayah-border)]/30 group-hover:border-[var(--color-hidayah-gold)]/30 transition-colors">
+                          {user.password}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {users.length === 0 && (
+                <div className="p-12 text-center text-[var(--color-hidayah-dark)]/40 text-sm font-medium">
+                  No sanctuary residents found.
+                </div>
+              )}
+            </div>
           </div>
         </div>
+        <div className="h-20" /> {/* Spacer for bottom nav */}
       </div>
     </main>
   );

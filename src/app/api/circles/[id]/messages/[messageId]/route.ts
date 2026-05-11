@@ -1,5 +1,4 @@
-export const dynamic = 'force-dynamic';
-]; }
+
 
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
@@ -8,9 +7,20 @@ import { pusherServer } from '@/lib/pusher';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-async function getAuthUser() {
-  const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-  const token = cookieStore.get('hidayah_token')?.value;
+async function getAuthUser(req: Request) {
+  let token = null;
+  try {
+    const cookieStore = (await cookies().catch(() => null));
+    token = cookieStore?.get('hidayah_token')?.value;
+  } catch (e) {}
+
+  if (!token) {
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
+
   if (!token) return null;
   try {
     const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
@@ -25,7 +35,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string; messageId: string }> }
 ) {
   try {
-    const user = await getAuthUser();
+    const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const { messageId } = await params;
@@ -58,7 +68,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; messageId: string }> }
 ) {
   try {
-    const user = await getAuthUser();
+    const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const { id, messageId } = await params;

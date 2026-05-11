@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+
 
 
 import { NextResponse } from 'next/server';
@@ -9,17 +9,36 @@ import { cookies } from 'next/headers';
 import User from '@/models/User';
 import { BADGES } from '@/constants/rewards';
 
-export async function GET() {
+async function getUserId(req?: Request) {
+  let token = null;
   try {
-    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-    const token = cookieStore.get('hidayah_token')?.value;
-    if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
+    const cookieStore = (await cookies().catch(() => null));
+    token = cookieStore?.get('hidayah_token')?.value;
+  } catch (e) {}
 
+  if (!token && req) {
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
+
+  if (!token) return null;
+  try {
     const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
     const decoded: any = jwt.verify(token, secret);
-    const userId = decoded.userId || decoded.email;
+    return decoded.userId || decoded.id || decoded.email;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const userId = await getUserId(req);
+    if (!userId) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
 
     await dbConnect();
     let progress = await QuizProgress.findOne({ userId }).lean();
@@ -42,15 +61,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-    const token = cookieStore.get('hidayah_token')?.value;
-    if (!token) {
+    const userId = await getUserId(req);
+    if (!userId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
-
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    const decoded: any = jwt.verify(token, secret);
-    const userId = decoded.userId || decoded.email;
 
     let body;
     try {
@@ -129,17 +143,12 @@ export async function POST(req: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
   try {
-    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-    const token = cookieStore.get('hidayah_token')?.value;
-    if (!token) {
+    const userId = await getUserId(req);
+    if (!userId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
-
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    const decoded: any = jwt.verify(token, secret);
-    const userId = decoded.userId || decoded.email;
 
     await dbConnect();
     await QuizProgress.findOneAndDelete({ userId });

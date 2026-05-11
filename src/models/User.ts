@@ -90,11 +90,6 @@ const UserSchema = new Schema({
   },
 });
 
-// Delete the existing model to ensure schema changes are applied during hot-reload
-if (mongoose.models.User) {
-  delete mongoose.models.User;
-}
-
-const User = model('User', UserSchema);
+const User = models.User || model('User', UserSchema);
 
 export default User;

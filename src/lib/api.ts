@@ -1,77 +1,147 @@
 import { Capacitor, CapacitorHttp, HttpOptions } from '@capacitor/core';
 
-const BASE_URL = "https://api.quran.com/api/v4";
-const FOUNDATION_BASE_URL = "https://apis.quran.foundation/content/api/v4";
-export const HIDAYAH_API_URL = "https://hidayah-lgq6.vercel.app";
+const QDC_API_URL = "https://api.qurancdn.com/api/qdc";
+const PRIMARY_URL = "https://hidayah-lpqy.vercel.app";
+const FALLBACK_URL = "https://hidayah-app.vercel.app";
+export const HIDAYAH_API_URL = (process.env.NEXT_PUBLIC_HIDAYAH_API_URL || PRIMARY_URL).replace(/\/$/, '');
 
 /**
- * Universal fetch that uses CapacitorHttp on native platforms for better connectivity
- * and standard fetch on web/server.
+ * Universal bridge for mobile connectivity with deep error trapping
  */
-async function universalFetch(url: string, options: RequestInit = {}) {
+async function universalFetch(url: string, options: RequestInit = {}, retries = 1) {
   const isNative = Capacitor.isNativePlatform();
 
-  if (isNative) {
-    // Build headers
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> || {}),
-    };
+  try {
+    if (isNative) {
+      const optionsHeaders = (options.headers as Record<string, string>) || {};
+      const headers: Record<string, string> = { ...optionsHeaders };
 
-    // Prepare data
-    let data = options.body;
-    if (typeof data === 'string') {
+      const isGet = !options.method || options.method.toUpperCase() === 'GET';
+      if (!isGet && !headers['Content-Type'] && !(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      let data = options.body;
+      if (typeof data === 'string' && headers['Content-Type'] === 'application/json') {
+        try { data = JSON.parse(data); } catch (e) {}
+      }
+
+      const httpOptions: HttpOptions = {
+        url: url.startsWith('http') ? url : `${PRIMARY_URL}${url}`,
+        method: options.method || 'GET',
+        headers: headers,
+        data: data,
+        connectTimeout: 20000,
+        readTimeout: 20000,
+      };
+
       try {
-        data = JSON.parse(data);
-      } catch (e) {
-        // Keep as string if not JSON
+        const response = await CapacitorHttp.request(httpOptions);
+        
+        // Handle Success
+        if (response.status >= 200 && response.status < 300) {
+          return {
+            ok: true,
+            status: response.status,
+            json: async () => typeof response.data === 'string' ? JSON.parse(response.data) : response.data,
+            clone: function() { return this; }
+          } as any;
+        }
+
+        // Handle Server Errors (404, 500, etc.)
+        let errorMsg = `Server Error (${response.status})`;
+        if (typeof response.data === 'string' && response.data.includes('message')) {
+          try { errorMsg = JSON.parse(response.data).message || errorMsg; } catch(e) {}
+        } else if (response.data?.message) {
+          errorMsg = response.data.message;
+        }
+
+        return {
+          ok: false,
+          status: response.status,
+          json: async () => ({ message: errorMsg }),
+          clone: function() { return this; }
+        } as any;
+
+      } catch (err: any) {
+        throw new Error(`Device connection failed.`);
       }
     }
 
-    const httpOptions: HttpOptions = {
-      url: url.startsWith('http') ? url : (url.startsWith('/') ? `${HIDAYAH_API_URL}${url}` : `${HIDAYAH_API_URL}/${url}`),
-      method: options.method || 'GET',
-      headers: headers,
-      data: data,
+    return fetch(url, options);
+  } catch (error: any) {
+    if (retries > 0) return universalFetch(url, options, retries - 1);
+    throw error;
+  }
+}
+
+let authCache: { data: any, timestamp: number } | null = null;
+const responseCache: Record<string, { data: any, timestamp: number }> = {};
+
+export async function hidayahFetch(url: string, options: RequestInit = {}) {
+  const isInternal = url.startsWith('/') || url.startsWith(HIDAYAH_API_URL) || url.includes('vercel.app');
+  const isGet = !options.method || options.method.toUpperCase() === 'GET';
+  const isWeb = typeof window !== 'undefined';
+  const isLocalhost = isWeb && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const isNative = Capacitor.isNativePlatform();
+
+  if (isInternal) {
+    let path = url.replace(HIDAYAH_API_URL, '').replace(PRIMARY_URL, '').replace(FALLBACK_URL, '');
+    if (!path.startsWith('/')) path = '/' + path;
+    
+    // Add trailing slash for internal API routes to avoid 308 redirects from Next.js/Vercel.
+    // Next.js with trailingSlash: true will 308 redirect any request without a slash.
+    if (!path.endsWith('/') && !path.includes('?') && !path.includes('.')) {
+      path += '/';
+    }
+
+    const headers: Record<string, string> = {
+      ...((options.headers as Record<string, string>) || {}),
     };
 
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('hidayah_token');
+      if (token && !headers['Authorization']) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+
+    // Use HIDAYAH_API_URL which respects process.env.NEXT_PUBLIC_HIDAYAH_API_URL
+    const baseUrl = (isLocalhost && !isNative) ? window.location.origin : HIDAYAH_API_URL;
+
     try {
-      const response = await CapacitorHttp.request(httpOptions);
+      const res = await universalFetch(`${baseUrl}${path}`, { ...options, headers });
+      if (res.ok) return res;
       
-      return {
-        ok: response.status >= 200 && response.status < 300,
-        status: response.status,
-        statusText: response.status.toString(),
-        headers: new Headers(response.headers as any),
-        json: async () => {
-          if (!response.data) return { message: 'No data received from server' };
-          if (typeof response.data === 'string') {
-            try {
-              return JSON.parse(response.data);
-            } catch (e) {
-              console.error('Failed to parse JSON string:', response.data);
-              // If it's HTML (likely a server crash or 404), extract a snippet or provide a better message
-              const isHtml = response.data.trim().startsWith('<');
-              return { 
-                message: isHtml ? `Server returned HTML instead of JSON (likely a crash or incorrect path). Status: ${response.status}` : 'Invalid JSON response from server',
-                error: 'Invalid JSON', 
-                raw: response.data.slice(0, 200) 
-              };
-            }
-          }
-          return response.data;
-        },
-        text: async () => typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
-        clone: function() { return this; }
-      } as Response;
-    } catch (error) {
-      console.error(`CapacitorHttp failed for ${url}:`, error);
-      throw error;
+      // If we are on local dev and got a server error (4xx/5xx), don't fallback to Vercel
+      // because the DB state will be different and it will cause confusion.
+      if (isLocalhost && !isNative) return res;
+
+      // If we used a custom baseUrl and it failed, try the fallback if it's different
+      if (baseUrl !== FALLBACK_URL && res.status >= 400) {
+        const fbRes = await universalFetch(`${FALLBACK_URL}${path}`, { ...options, headers });
+        if (fbRes.ok) return fbRes;
+      }
+      return res;
+    } catch (e) {
+      // Log the primary failure to the console for better debugging
+      if (isLocalhost) {
+        console.error(`[Hidayah API] Primary Request Failed (${baseUrl}${path}):`, e);
+      }
+
+      // If on localhost, don't fallback to remote Vercel to avoid confusing CORS/Auth errors
+      if (isLocalhost && !isNative) throw e;
+
+      // If primary fails with an exception (e.g. network down), try fallback
+      if (baseUrl !== FALLBACK_URL) {
+        return universalFetch(`${FALLBACK_URL}${path}`, { ...options, headers });
+      }
+      throw e;
     }
   }
 
-  // Fallback to standard fetch
-  return fetch(url, options);
+  return universalFetch(url, options);
 }
 
 export interface Juz {
@@ -85,151 +155,129 @@ export interface Juz {
 
 export interface Chapter {
   id: number;
-  revelation_place: string;
-  revelation_order: number;
-  bismillah_pre: boolean;
   name_simple: string;
-  name_complex: string;
   name_arabic: string;
   verses_count: number;
-  pages: number[];
-  translated_name: {
-    language_name: string;
-    name: string;
-  };
+  translated_name: { name: string };
 }
 
 export interface Verse {
   id: number;
   verse_key: string;
   text_indopak: string;
-  text_uthmani?: string;
   page_number: number;
-  juz_number: number;
-  hizb_number: number;
-  rub_el_hizb_number: number;
-  translations?: {
-    id: number;
-    resource_id: number;
-    text: string;
-  }[];
+  translations?: { text: string }[];
 }
 
 export async function getJuzs(): Promise<Juz[]> {
-  const res = await universalFetch(`${BASE_URL}/juzs`);
-  if (!res.ok) throw new Error("Failed to fetch juzs");
+  const res = await hidayahFetch(`${QDC_API_URL}/juzs`);
   const data = await res.json();
-  return data.juzs;
+  return data.juzs || [];
 }
 
 export async function getChapters(): Promise<Chapter[]> {
-  const res = await universalFetch(`${FOUNDATION_BASE_URL}/chapters`);
-  if (!res.ok) {
-    const fallback = await universalFetch(`${BASE_URL}/chapters`);
-    if (!fallback.ok) throw new Error("Failed to fetch chapters");
-    const data = await fallback.json();
-    return data.chapters;
-  }
+  const res = await hidayahFetch(`${QDC_API_URL}/chapters?language=en`);
   const data = await res.json();
-  return data.chapters;
+  return data.chapters || [];
 }
 
 export async function getVersesByPage(page: number): Promise<Verse[]> {
-  const res = await universalFetch(`${BASE_URL}/verses/by_page/${page}?fields=text_indopak`);
-  if (!res.ok) throw new Error("Failed to fetch verses for page");
-  const data = await res.json();
-  return data.verses;
+  try {
+    // Attempt 1: QDC API (Official)
+    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_page/${page}?words=false&fields=text_indopak&per_page=50`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.verses && data.verses.length > 0) return data.verses.map((v: any) => ({ ...v, page_number: v.page_number || page }));
+    }
+    
+    // Fallback attempt: QDC API v4
+    const v4Res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_page/${page}?words=false&fields=text_indopak&per_page=50`);
+    if (v4Res.ok) {
+      const v4Data = await v4Res.json();
+      if (v4Data.verses && v4Data.verses.length > 0) return v4Data.verses.map((v: any) => ({ ...v, page_number: v.page_number || page }));
+    }
+
+    throw new Error("QDC API empty or failed");
+  } catch (error) {
+    console.warn("QDC failed, trying AlQuran Cloud for page", page);
+    try {
+      // Attempt 2: AlQuran Cloud (Fallback)
+      const arRes = await hidayahFetch(`https://api.alquran.cloud/v1/page/${page}/quran-indopak`);
+      const arData = await arRes.json();
+      
+      if (arData.data && arData.data.ayahs) {
+        return arData.data.ayahs.map((ayah: any) => ({
+          id: ayah.number,
+          verse_key: `${ayah.surah.number}:${ayah.numberInSurah}`,
+          text_indopak: ayah.text,
+          page_number: page
+        }));
+      }
+    } catch (fallbackError) {
+      console.error("All Quran APIs failed:", fallbackError);
+    }
+    return [];
+  }
+}
+
+export async function getVersesByJuz(juz: number): Promise<Verse[]> {
+  try {
+    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_juz/${juz}?words=false&fields=text_indopak&per_page=500`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.verses && data.verses.length > 0) return data.verses;
+    }
+    
+    const v4Res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_juz/${juz}?words=false&fields=text_indopak&per_page=500`);
+    if (v4Res.ok) {
+      const v4Data = await v4Res.json();
+      if (v4Data.verses && v4Data.verses.length > 0) return v4Data.verses;
+    }
+    
+    throw new Error("QDC API failed");
+  } catch (error) {
+    console.warn("Falling back to AlQuran Cloud for juz", juz);
+    try {
+      const arRes = await hidayahFetch(`https://api.alquran.cloud/v1/juz/${juz}/quran-indopak`);
+      const arData = await arRes.json();
+      if (arData.data && arData.data.ayahs) {
+        return arData.data.ayahs.map((ayah: any) => ({
+          id: ayah.number,
+          verse_key: `${ayah.surah.number}:${ayah.numberInSurah}`,
+          text_indopak: ayah.text,
+          page_number: ayah.page
+        }));
+      }
+    } catch (fallbackError) {
+      console.error("Fallback API also failed:", fallbackError);
+    }
+    return [];
+  }
 }
 
 export async function getVersesByChapter(chapterId: number): Promise<Verse[]> {
-  const [arabicRes, translationRes] = await Promise.all([
-    universalFetch(`${BASE_URL}/quran/verses/indopak?chapter_number=${chapterId}`),
-    universalFetch(`${BASE_URL}/quran/translations/20?chapter_number=${chapterId}`)
-  ]);
-
-  if (!arabicRes.ok || !translationRes.ok) {
-    throw new Error("Failed to fetch verses or translations");
-  }
-
-  const arabicData = await arabicRes.json();
-  const translationData = await translationRes.json();
-
-  const mergedVerses = arabicData.verses.map((verse: any, index: number) => {
-    const translation = translationData.translations[index];
-    return {
-      ...verse,
-      translations: translation ? [{ resource_id: 20, text: translation.text }] : []
-    };
-  });
-
-  return mergedVerses;
-}
-
-/**
- * Standard fetch wrapper that attaches auth token via both cookies AND
- * Authorization header (from localStorage) for maximum localhost reliability.
- */
-export async function hidayahFetch(url: string, options: RequestInit = {}) {
-  let path = url;
-  if (HIDAYAH_API_URL && url.startsWith(HIDAYAH_API_URL)) {
-    path = url.replace(HIDAYAH_API_URL, '');
-  }
-  
-  // Strip trailing slash for API consistency
-  if (path.includes('/api/') && path.endsWith('/')) {
-    path = path.slice(0, -1);
-  }
-
-  let fullUrl = path;
-  if (!path.startsWith('http')) {
-    const isBrowser = typeof window !== 'undefined';
-    const isNative = Capacitor.isNativePlatform();
-
-    if (HIDAYAH_API_URL && (!isBrowser || isNative)) {
-      fullUrl = `${HIDAYAH_API_URL}${path.startsWith('/') ? path : `/${path}`}`;
-    } else {
-      fullUrl = path.startsWith('/') ? path : `/${path}`;
-    }
-  }
-
-  const isFormData = options.body instanceof FormData;
-  const headers: Record<string, string> = {
-    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-    ...(options.headers as Record<string, string> || {}),
-  };
-
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('hidayah_token');
-    if (token && !headers['Authorization']) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-  }
-
   try {
-    const response = await universalFetch(fullUrl, {
-      ...options,
-      headers,
-      credentials: 'include',
-    } as any);
-
-    if (response.ok && typeof window !== 'undefined') {
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const cloned = response.clone();
-        try {
-          const data = await cloned.json();
-          if (data.token) {
-            localStorage.setItem('hidayah_token', data.token);
-          }
-        } catch {
-          // Ignore
-        }
-      }
+    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_chapter/${chapterId}?words=false&translations=131,20&fields=text_indopak&per_page=500`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.verses && data.verses.length > 0) return data.verses;
     }
-
-    return response;
+    throw new Error("QDC API failed");
   } catch (error) {
-    console.error(`hidayahFetch failed for ${fullUrl}:`, error);
-    throw error;
+    console.warn("Falling back to AlQuran Cloud for chapter", chapterId);
+    try {
+      const arRes = await hidayahFetch(`https://api.alquran.cloud/v1/surah/${chapterId}/quran-indopak`);
+      const arData = await arRes.json();
+      if (arData.data && arData.data.ayahs) {
+        return arData.data.ayahs.map((ayah: any) => ({
+          id: ayah.number,
+          verse_key: `${chapterId}:${ayah.numberInSurah}`,
+          text_indopak: ayah.text
+        }));
+      }
+    } catch (fallbackError) {
+      console.error("Fallback API also failed:", fallbackError);
+    }
+    return [];
   }
 }

@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+
 
 
 import { NextResponse } from 'next/server';
@@ -6,30 +6,9 @@ import dbConnect from '@/lib/mongodb';
 import Post from '@/models/Post';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+import { getAuthUser } from '@/lib/auth';
 
-// Helper to get authenticated user
-async function getUser(req?: Request) {
-  let token = null;
-  try {
-    const cookieStore = (await cookies().catch(() => null));
-    token = cookieStore?.get('hidayah_token')?.value;
-  } catch (e) {}
 
-  if (!token && req) {
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7);
-    }
-  }
-
-  if (!token) return null;
-  try {
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    return jwt.verify(token, secret) as any;
-  } catch(e) {
-    return null;
-  }
-}
 
 export async function GET(req: Request) {
   try {
@@ -42,6 +21,10 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const userId = url.searchParams.get('userId');
     const mood = url.searchParams.get('mood');
+    const tab = url.searchParams.get('tab');
+
+    const authUser = await getAuthUser();
+    const currentUserId = authUser?.userId || authUser?.id;
 
     const query: any = { isVisible: { $ne: false } };
     if (userId) {
@@ -49,6 +32,17 @@ export async function GET(req: Request) {
     }
     if (mood && mood !== 'All') {
       query.moodTag = mood;
+    }
+
+    // Special logic for profile 'saved' tab
+    if (tab === 'saved' && currentUserId) {
+      const User = (await import('@/models/User')).default;
+      const user = await User.findById(currentUserId).select('savedPosts');
+      if (user && user.savedPosts.length > 0) {
+        query._id = { $in: user.savedPosts };
+      } else {
+        return NextResponse.json({ posts: [], page: 1, limit: 50 }, { status: 200 });
+      }
     }
 
     const page = parseInt(url.searchParams.get('page') || '1');
@@ -61,7 +55,22 @@ export async function GET(req: Request) {
       .limit(limit)
       .lean();
 
-    return NextResponse.json({ posts, page, limit }, { status: 200 });
+    // Mark as saved if user is logged in
+    let savedPostIds: string[] = [];
+    if (currentUserId) {
+      const User = (await import('@/models/User')).default;
+      const user = await User.findById(currentUserId).select('savedPosts');
+      if (user) {
+        savedPostIds = user.savedPosts.map((id: any) => id.toString());
+      }
+    }
+
+    const postsWithSavedStatus = posts.map((post: any) => ({
+      ...post,
+      isSaved: savedPostIds.includes(post._id.toString())
+    }));
+
+    return NextResponse.json({ posts: postsWithSavedStatus, page, limit }, { status: 200 });
   } catch (error) {
     console.error('Error fetching posts:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
@@ -70,7 +79,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const user = await getUser(req);
+    const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
@@ -78,15 +87,14 @@ export async function POST(req: Request) {
     await dbConnect();
     const body = await req.json();
 
-    // Use the actual username, fallback to email prefix if an old account
-    let authorName = user.username;
-    if (!authorName) {
-      const prefix = user.email.split('@')[0];
-      authorName = prefix.charAt(0).toUpperCase() + prefix.slice(1).replace(/[0-9]/g, '');
-    }
-
+    // Fetch full user doc to ensure we have the latest username/image
     const User = (await import('@/models/User')).default;
     const userDoc = await User.findById(user.userId).lean() as any;
+
+    let authorName = userDoc?.username;
+    if (!authorName) {
+      authorName = userDoc?.email ? userDoc.email.split('@')[0] : 'User';
+    }
 
     const newPost = await Post.create({
       userId: user.userId,

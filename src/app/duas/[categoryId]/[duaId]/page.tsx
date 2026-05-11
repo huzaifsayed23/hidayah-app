@@ -36,8 +36,8 @@ export default async function DuaDetailPage({
         </header>
 
         <div className="flex-grow flex flex-col items-center justify-center space-y-12 w-full">
-          <div className="w-full text-center px-4" dir="rtl">
-            <p className="font-arabic text-3xl sm:text-4xl md:text-5xl text-[var(--color-hidayah-dark)] leading-[2.5] break-words align-middle" style={{ wordSpacing: '0.15em' }}>
+          <div className="w-full px-4" dir="rtl">
+            <p className="font-arabic text-3xl sm:text-4xl text-[var(--color-hidayah-dark)] mushaf-layout">
               {dua.arabic}
             </p>
           </div>

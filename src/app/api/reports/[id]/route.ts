@@ -1,5 +1,4 @@
-export const dynamic = 'force-dynamic';
-]; }
+
 
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
@@ -27,7 +26,7 @@ export async function PATCH(
   try {
     const { id: reportId } = await params;
     const user = await getAuthUser();
-    const isAdmin = user?.email === 'huzaifsayed454@gmail.com'; 
+    const isAdmin = user?.email?.toLowerCase() === 'huzaifsayed454@gmail.com'; 
     if (!isAdmin) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const { action } = await req.json(); // 'delete', 'dismiss', 'warn', 'suspend'

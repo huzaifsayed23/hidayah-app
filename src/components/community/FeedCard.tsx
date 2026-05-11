@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { MOOD_PALETTES, GRADIENT_LIBRARY, generateMeshGradient } from '@/lib/gradients';
 import PostMenu from './PostMenu';
 import HadithCard from './HadithCard';
 import { NatureBackground } from '../NatureBackground';
 import { hidayahFetch } from '@/lib/api';
+import { toBlob } from 'html-to-image';
+import { Logo } from '@/components/Logo';
+import { Share2 } from 'lucide-react';
 
 interface FeedCardProps {
   id: string;
@@ -74,7 +77,7 @@ export default function FeedCard({
   customBackgroundImage,
   onDeleteSuccess,
 }: FeedCardProps & { authorName?: string }) {
-  const author = propAuthor || authorName || "Guest";
+  const author = propAuthor || authorName || "User";
   const [isLiked, setIsLiked] = useState(ameens?.includes(currentUserId || "") || false);
   const [likesCount, setLikesCount] = useState(ameenCount || 0);
   const [showReplies, setShowReplies] = useState(false);
@@ -84,7 +87,59 @@ export default function FeedCard({
   const [isRepliesExpanded, setIsRepliesExpanded] = useState(false);
   const [isSavedPost, setIsSavedPost] = useState(isSaved);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showHeart, setShowHeart] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const cardRef = React.useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  const handleShare = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
+    
+    try {
+      if (!cardRef.current) return;
+      
+      // Capture the card exactly as it looks
+      const blob = await toBlob(cardRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: 'transparent'
+      });
+
+      if (!blob) throw new Error("Failed to capture");
+
+      const file = new File([blob], `hidayah_${id}.png`, { type: 'image/png' });
+      
+      const triggerDownload = () => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `hidayah_reflection_${id}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Hidayah Reflection',
+          });
+        } catch (shareError) {
+          // If it's a system error (not user cancel), download instead
+          if ((shareError as Error).name !== 'AbortError') {
+            triggerDownload();
+          }
+        }
+      } else {
+        triggerDownload();
+      }
+    } catch (err) {
+      console.error("Critical share failure:", err);
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   React.useEffect(() => {
     setIsLiked(ameens?.includes(currentUserId || "") || false);
@@ -114,6 +169,15 @@ export default function FeedCard({
       setIsLiked(isLiked);
       setLikesCount(likesCount);
     }
+  };
+
+  const handleDoubleTap = () => {
+    if (!currentUserId) return;
+    if (!isLiked) {
+      handleLike();
+    }
+    setShowHeart(true);
+    setTimeout(() => setShowHeart(false), 1000);
   };
 
   const submitReply = async () => {
@@ -205,14 +269,24 @@ export default function FeedCard({
   const globalTextShadow = '0 2px 8px rgba(0,0,0,0.3)';
 
   return (
-    <div className={`relative group overflow-hidden ${compact ? 'rounded-[32px] flex flex-col aspect-[4/5] sm:aspect-[3/4] p-3.5 sm:p-6' : 'rounded-[48px] p-5 sm:p-8'} border border-[var(--color-hidayah-border)]/30 ${hasGradient ? '' : 'bg-[var(--color-hidayah-primary)] shadow-sm hover:shadow-md'} transition-all duration-300`}>
+    <div 
+      ref={cardRef}
+      onDoubleClick={handleDoubleTap}
+      className={`relative group overflow-hidden ${compact ? 'rounded-[32px] flex flex-col aspect-[4/5] sm:aspect-[3/4] p-3.5 sm:p-6' : 'rounded-[48px] p-5 sm:p-8'} border border-[var(--color-hidayah-border)]/30 ${hasGradient ? '' : 'bg-[var(--color-hidayah-primary)] shadow-sm hover:shadow-md'} transition-all duration-300 select-none`}
+    >
+      {showHeart && (
+        <div className="absolute inset-0 flex items-center justify-center z-[100] pointer-events-none animate-in fade-in zoom-in-50 duration-300">
+          <Heart className="w-24 h-24 text-white fill-white drop-shadow-2xl opacity-90" />
+        </div>
+      )}
       {/* Background Layer */}
       {customBackgroundImage ? (
         <div 
           className="absolute inset-0 z-0 bg-cover bg-center no-repeat transition-all duration-700"
           style={{ 
             backgroundImage: `url(${customBackgroundImage})`,
-            backgroundPosition: 'center 30%' // Optimized for 'middle perfect' framing
+            backgroundPosition: 'center center',
+            backgroundSize: 'cover'
           }}
         />
       ) : hasGradient && (
@@ -234,13 +308,13 @@ export default function FeedCard({
           <div className="flex items-center gap-2 md:gap-3">
             <div className={`${compact ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-10 h-10 md:w-12 md:h-12'} shrink-0 rounded-full flex items-center justify-center font-bold ${compact ? 'text-sm' : 'text-lg'} ${avatarBg} overflow-hidden`}>
               {authorImage ? (
-                <img src={authorImage} alt={author || "Guest"} className="w-full h-full object-cover" />
+                <img src={authorImage} alt={author || "User"} className="w-full h-full object-cover" />
               ) : (
-                (author || "Guest").charAt(0).toUpperCase()
+                (author || "User").charAt(0).toUpperCase()
               )}
             </div>
             <div className="flex flex-col">
-              <h3 className={`font-semibold ${compact ? 'text-[11px] sm:text-xs md:text-sm truncate max-w-[70px] sm:max-w-none' : 'text-sm'} ${textColor}`}>{author || "Guest"}</h3>
+              <h3 className={`font-semibold ${compact ? 'text-[11px] sm:text-xs md:text-sm truncate max-w-[70px] sm:max-w-none' : 'text-sm'} ${textColor}`}>{author || "User"}</h3>
               <span className={`text-[9px] sm:text-[10px] md:text-xs ${textMuted}`}>{timeAgo}</span>
             </div>
           </div>
@@ -337,6 +411,15 @@ export default function FeedCard({
             <div className="flex-1" />
             
             <button 
+              onClick={handleShare}
+              disabled={isSharing}
+              className={`p-2 rounded-full transition-all active:scale-90 shadow-sm z-20 ${isSharing ? 'animate-pulse' : ''} ${isLightText ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-black/5 text-[var(--color-hidayah-dark)] hover:bg-black/10'}`}
+              title="Share to Story"
+            >
+              {isSharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className={`w-4 h-4 transition-transform hover:scale-125`} />}
+            </button>
+            
+            <button 
               onClick={handleSave}
               className={`p-2 rounded-full transition-all active:scale-90 shadow-sm z-20 ${isSavedPost ? 'bg-[var(--color-hidayah-gold)] text-white' : (isLightText ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-black/5 text-[var(--color-hidayah-dark)] hover:bg-black/10')}`}
               title={isSavedPost ? 'Unsave reflection' : 'Save reflection'}
@@ -353,7 +436,7 @@ export default function FeedCard({
                   {(isRepliesExpanded ? repliesList : repliesList.slice(-1)).map((reply: any, i: number) => (
                     <div key={i} className={`p-3 rounded-xl ${isLightText ? 'bg-white/10' : 'bg-[var(--color-hidayah-primary)]'} border ${borderCol}`}>
                       <div className="flex justify-between items-start mb-1">
-                        <span className={`text-xs font-bold ${textColor}`}>{reply.author || "Guest"}</span>
+                        <span className={`text-xs font-bold ${textColor}`}>{reply.author || "User"}</span>
                         <span className={`text-[10px] ${textMuted}`}>{new Date(reply.createdAt).toLocaleDateString()}</span>
                       </div>
                       <p className={`text-sm ${textColor}`}>{reply.content}</p>
@@ -400,6 +483,10 @@ export default function FeedCard({
               </div>
             </div>
           )}
+        </div>
+        <div className="mt-4 flex items-center justify-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
+          <Logo className="w-4 h-4 text-white" showText={false} />
+          <span className="text-[8px] font-bold text-white uppercase tracking-[0.2em]">Hidayah</span>
         </div>
       </div>
     </div>

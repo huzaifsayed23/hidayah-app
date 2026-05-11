@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookOpen, Search, Bookmark, History, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { getJuzs, Juz, HIDAYAH_API_URL, hidayahFetch } from "@/lib/api";
+import { safeStorage } from "@/lib/storage";
 import { useState, useEffect } from "react";
+import { motion } from 'framer-motion';
 
 import PageJumpInput from "@/components/quran/PageJumpInput";
 import BottomNav from "@/components/BottomNav";
@@ -23,24 +25,45 @@ export default function QuranPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        // Auth check
-        const meRes = await hidayahFetch('/api/auth/me');
-        if (!meRes.ok) {
-          router.push('/auth');
-          return;
-        }
+      // Get User ID from token for isolated storage
+      const token = safeStorage.getItem('hidayah_token');
+      let userId = 'guest';
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          userId = payload.userId || 'guest';
+        } catch (e) {}
+      }
+      const storageKey = `hidayah_bookmarks_${userId}`;
 
+      // Immediate load from localStorage for instant feel
+      const localPage = safeStorage.getItem('hidayah_last_read_page');
+      if (localPage) setLastReadPage(parseInt(localPage));
+      
+      const localBookmarks = JSON.parse(safeStorage.getItem(storageKey) || '[]');
+      if (localBookmarks.length > 0) {
+        // Fallback placeholder if server hasn't loaded yet
+        setBookmarks(localBookmarks.map((k: string) => ({ verseKey: k, pageNumber: 1, addedAt: new Date() })));
+      }
+
+      try {
         const juzsData = await getJuzs();
-        const allJuzs = Array.from(new Map(juzsData.map(item => [item.juz_number, item])).values())
-          .sort((a, b) => a.juz_number - b.juz_number);
+        const allJuzs = Array.from(new Map(juzsData.map((item: Juz) => [item.juz_number, item])).values())
+          .sort((a: Juz, b: Juz) => a.juz_number - b.juz_number);
         setJuzs(allJuzs);
 
         const profileRes = await hidayahFetch('/api/users/profile');
         if (profileRes.ok) {
           const profileData = await profileRes.json();
-          setLastReadPage(profileData.user.lastReadPage || 1);
-          setBookmarks(profileData.user.bookmarks || []);
+          const serverPage = profileData.user.lastReadPage;
+          if (serverPage) {
+            setLastReadPage(serverPage);
+            safeStorage.setItem('hidayah_last_read_page', serverPage.toString());
+          }
+          
+          const serverBookmarks = profileData.user.bookmarks || [];
+          setBookmarks(serverBookmarks);
+          safeStorage.setItem(storageKey, JSON.stringify(serverBookmarks.map((b: any) => b.verseKey)));
         }
       } catch (e) {
         console.error("Quran page data fetch error:", e);
@@ -50,6 +73,8 @@ export default function QuranPage() {
     };
     fetchData();
   }, [router]);
+
+  const lastReadJuz = typeof window !== 'undefined' ? safeStorage.getItem('hidayah_last_read_juz') || "1" : "1";
 
   if (isLoading) {
     return (
@@ -61,7 +86,13 @@ export default function QuranPage() {
 
   return (
     <main className="min-h-screen bg-[var(--color-hidayah-primary)] text-[var(--color-hidayah-dark)] p-6 sm:p-12 pb-24">
-      <div className="max-w-4xl mx-auto">
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="max-w-4xl mx-auto"
+      >
         <header className="mb-12 text-center relative pt-4">
           <Link 
             href="/community" 
@@ -93,7 +124,7 @@ export default function QuranPage() {
               </div>
               <div className="text-left">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-hidayah-gold">Continue Reading</p>
-                <p className="text-lg font-serif font-bold text-[var(--color-hidayah-dark)]">Page {lastReadPage}</p>
+                <p className="text-lg font-serif font-bold text-[var(--color-hidayah-dark)]">Juz {lastReadJuz} • Page {lastReadPage}</p>
               </div>
               <ArrowRight className="w-5 h-5 ml-auto text-hidayah-gold opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
             </Link>
@@ -168,7 +199,7 @@ export default function QuranPage() {
             </div>
           </section>
         )}
-      </div>
+      </motion.div>
     </main>
   );
 }

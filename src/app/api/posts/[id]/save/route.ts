@@ -1,5 +1,4 @@
-export const dynamic = 'force-dynamic';
-]; }
+
 
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
@@ -7,27 +6,17 @@ import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-async function getUser(req?: Request) {
-  let token = null;
-  try {
-    const cookieStore = (await cookies().catch(() => null));
-    token = cookieStore?.get('hidayah_token')?.value;
-  } catch (e) {}
+import { getAuthUser } from '@/lib/auth';
 
-  if (!token && req) {
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7);
-    }
-  }
-
-  if (!token) return null;
-  try {
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    return jwt.verify(token, secret) as any;
-  } catch(e) {
-    return null;
-  }
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+    },
+  });
 }
 
 export async function POST(
@@ -35,9 +24,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const decoded = await getUser(req);
+    const decoded = await getAuthUser();
     if (!decoded || (!decoded.userId && !decoded.id)) {
-      return NextResponse.json({ message: 'Unauthorized or missing userId' }, { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized or missing userId' }, { 
+        status: 401,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
     }
 
     const userId = decoded.userId || decoded.id;
@@ -47,7 +39,10 @@ export async function POST(
     
     const user = await User.findById(userId);
     if (!user) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 });
+      return NextResponse.json({ message: 'User not found' }, { 
+        status: 404,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
     }
 
     if (!user.savedPosts) {
@@ -67,10 +62,16 @@ export async function POST(
 
     return NextResponse.json({ 
       hasSaved: !hasSaved 
-    }, { status: 200 });
+    }, { 
+      status: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
 
   } catch (error) {
     console.error('Error saving post:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ message: 'Internal Server Error' }, { 
+      status: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
   }
 }

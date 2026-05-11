@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+
 
 
 import { NextResponse } from 'next/server';
@@ -8,25 +8,15 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import QuizProgress from '@/models/QuizProgress';
 import { BADGES, REFLECTION_THEMES } from '@/constants/rewards';
+import { getAuthUser } from '@/lib/auth';
 
 
 
 export async function GET() {
-  try {
-    let token = null;
-    try {
-      const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-      token = cookieStore.get('hidayah_token')?.value;
-    } catch (e) {
-      // Ignore during build
-    }
-
-    if (!token) {
+    const decoded = await getAuthUser();
+    if (!decoded) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
-
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    const decoded: any = jwt.verify(token, secret);
     const userId = decoded.userId;
 
     await dbConnect();
@@ -34,6 +24,18 @@ export async function GET() {
 
     if (!user) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
+    }
+
+    // Auto-fix for admin username
+    if (user.email?.toLowerCase() === 'huzaifsayed454@gmail.com' && user.username !== 'HuzaifSayed') {
+      user.username = 'HuzaifSayed';
+      await user.save();
+    }
+
+    // Generic fix for missing usernames
+    if (!user.username) {
+      user.username = user.email ? user.email.split('@')[0] : 'User' + Math.floor(Math.random() * 1000);
+      await user.save();
     }
 
     // Sync badges & backgrounds with QuizProgress
@@ -98,14 +100,10 @@ export async function GET() {
 export async function PATCH(req: Request) {
 
   try {
-    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-    const token = cookieStore.get('hidayah_token')?.value;
-    if (!token) {
+    const decoded = await getAuthUser();
+    if (!decoded) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
-
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    const decoded: any = jwt.verify(token, secret);
     const userId = decoded.userId;
 
     const { bio, username, lastReadPage } = await req.json();
@@ -135,16 +133,23 @@ export async function PATCH(req: Request) {
   }
 }
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+    },
+  });
+}
+
 export async function DELETE() {
   try {
-    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-    const token = cookieStore.get('hidayah_token')?.value;
-    if (!token) {
+    const decoded = await getAuthUser();
+    if (!decoded) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
-
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    const decoded: any = jwt.verify(token, secret);
     const userId = decoded.userId;
 
     await dbConnect();
@@ -160,8 +165,11 @@ export async function DELETE() {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
 
-    // Clear cookie
-    cookieStore.delete('hidayah_token');
+    // Clear cookie if possible
+    try {
+      const cookieStore = await cookies();
+      cookieStore.delete('hidayah_token');
+    } catch (e) {}
 
     return NextResponse.json({ message: 'Account deleted successfully' }, { status: 200 });
   } catch (error) {

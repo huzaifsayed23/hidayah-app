@@ -25,30 +25,33 @@ export function SplashScreen() {
     }
 
     const checkAuthAndRedirect = async () => {
-      // 3-second timer
+      // Short delay for the splash animation
       const timer = setTimeout(async () => {
         try {
+          const token = localStorage.getItem('hidayah_token');
+          if (!token) {
+            setIsVisible(false);
+            setTimeout(() => router.push("/auth"), 800);
+            return;
+          }
+
           const res = await hidayahFetch("/api/auth/me");
           const data = await res.json();
-
           
           setIsVisible(false);
           
-          // Cross-Fade transition: Delay for exit animation to complete
           setTimeout(() => {
             if (res.ok && data.authenticated) {
               router.push("/community");
             } else {
               router.push("/auth");
             }
-          }, 1000);
+          }, 800);
         } catch (error) {
-          console.error("Auth check failed detailed error:", error);
           setIsVisible(false);
-          setTimeout(() => router.push("/auth"), 1000);
+          setTimeout(() => router.push("/auth"), 800);
         }
-
-      }, 3000);
+      }, 2500);
 
       return () => clearTimeout(timer);
     };

@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+
 
 
 import { NextResponse } from 'next/server';
@@ -22,7 +22,7 @@ async function getAuthUser() {
 export async function GET(req: Request) {
   try {
     const user = await getAuthUser();
-    const isAdmin = user?.email === 'huzaifsayed454@gmail.com';
+    const isAdmin = user?.email?.toLowerCase() === 'huzaifsayed454@gmail.com';
     if (!isAdmin) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }

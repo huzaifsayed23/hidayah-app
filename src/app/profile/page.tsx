@@ -12,7 +12,9 @@ import EditableBio from '@/components/profile/EditableBio';
 import { BADGES } from '@/constants/rewards';
 import BottomNav from '@/components/BottomNav';
 import { hidayahFetch } from '@/lib/api';
+import { safeStorage } from '@/lib/storage';
 import MedalIcon from '@/components/ui/MedalIcon';
+import { motion } from 'framer-motion';
 
 function ProfileContent() {
   const [mounted, setMounted] = useState(false);
@@ -26,26 +28,50 @@ function ProfileContent() {
 
   useEffect(() => {
     setMounted(true);
+    
+    // Instant load from cache
+    const cachedProfile = safeStorage.getItem('hidayah_profile_cache');
+    const cachedPosts = safeStorage.getItem(`hidayah_profile_posts_${currentTab}`);
+    if (cachedProfile) {
+      try {
+        const profile = JSON.parse(cachedProfile);
+        setUserData(profile);
+        setSavedHadiths(profile.savedHadiths || []);
+        if (cachedPosts) setDisplayPosts(JSON.parse(cachedPosts));
+        setIsLoading(false); // Skip spinner if we have data
+      } catch (e) {}
+    }
+
     const fetchData = async () => {
       const token = typeof window !== 'undefined' ? localStorage.getItem('hidayah_token') : null;
       if (!token) {
         router.push('/auth');
         return;
       }
-      setIsLoading(true);
+      
+      if (!localStorage.getItem('hidayah_profile_cache')) setIsLoading(true);
+      
       try {
-        // Fetch full profile info
         const profileRes = await hidayahFetch('/api/users/profile');
         if (profileRes.ok) {
           const profileData = await profileRes.json();
           setUserData(profileData.user);
           setSavedHadiths(profileData.user.savedHadiths || []);
           
+          // Prune large fields for cache
+          const cacheData = { 
+            ...profileData.user, 
+            savedHadiths: (profileData.user.savedHadiths || []).slice(0, 10), // Only cache recent hadiths
+            bookmarks: (profileData.user.bookmarks || []).slice(0, 5) // Only cache few bookmarks
+          };
+          safeStorage.setItem('hidayah_profile_cache', JSON.stringify(cacheData));
+          
           if (currentTab !== 'achievements' && currentTab !== 'hadiths') {
             const postsRes = await hidayahFetch(`/api/posts?userId=${profileData.user._id}&tab=${currentTab === 'posts' ? 'posts' : 'saved'}`);
             if (postsRes.ok) {
               const postsData = await postsRes.json();
               setDisplayPosts(postsData.posts);
+              safeStorage.setItem(`hidayah_profile_posts_${currentTab}`, JSON.stringify(postsData.posts));
             }
           }
         }
@@ -67,7 +93,7 @@ function ProfileContent() {
   }
 
   const user = userData || {
-    username: "Guest",
+    username: "User",
     bio: "Seeking knowledge and patience.",
     createdAt: new Date(),
     unlockedBadges: [],
@@ -75,8 +101,8 @@ function ProfileContent() {
     savedHadiths: []
   };
 
-  const userName = user.username ? `@${user.username}` : "Guest";
-  const userInitial = user.username ? user.username.charAt(0).toUpperCase() : "G";
+  const userName = userData ? `@${user.username || 'User'}` : "Loading...";
+  const userInitial = user.username ? user.username.charAt(0).toUpperCase() : "U";
   const joinedDate = new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   const userImage = user.image;
@@ -85,7 +111,13 @@ function ProfileContent() {
   const currentUserId = user._id;
 
   return (
-    <div className="min-h-screen pb-24 max-w-2xl mx-auto px-4 sm:px-6 pt-8 mobile-scroll-container">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="min-h-screen pb-24 max-w-2xl mx-auto px-4 sm:px-6 pt-8 mobile-scroll-container"
+    >
       <div className="flex justify-between items-center mb-4">
         <Link href="/community" className="p-2.5 rounded-full hover:bg-[var(--color-hidayah-secondary)] transition-colors text-[var(--color-hidayah-dark)] opacity-70 hover:opacity-100">
           <ArrowLeft className="w-5 h-5" />
@@ -119,7 +151,7 @@ function ProfileContent() {
         </Link>
         <Link 
           href="/profile?tab=achievements"
-          className={`flex-1 min-w-[100px] pb-4 text-[10px] sm:text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all ${currentTab === "achievements" ? 'text-[var(--color-hidayah-dark)] border-b-2 border-[var(--color-hidayah-gold)]' : 'text-[var(--color-hidayah-dark)] opacity-40 hover:opacity-100'}`}
+          className={`flex-1 min-w-[100px] pb-4 text-[10px] sm:text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all ${currentTab === "achievements" ? 'text-[var(--color-hidayah-dark)] border-b-2 border._0_var(--color-hidayah-gold)]' : 'text-[var(--color-hidayah-dark)] opacity-40 hover:opacity-100'}`}
         >
           <Medal className="w-3.5 h-3.5" />
           Badges
@@ -186,7 +218,7 @@ function ProfileContent() {
           </>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 

@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+
 
 
 import { NextResponse } from 'next/server';
@@ -33,7 +33,7 @@ export async function GET() {
     }
     
     // Strict Admin Check
-    const isAdmin = user?.email === 'huzaifsayed454@gmail.com';
+    const isAdmin = user?.email?.toLowerCase() === 'huzaifsayed454@gmail.com';
     if (!isAdmin && user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }

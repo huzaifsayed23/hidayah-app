@@ -90,8 +90,8 @@ export default function CreateReflectionPage() {
           return;
         }
       }
-      const resText = await fetch(`https://api.alquran.cloud/v1/ayah/${surah}:${ayah}/quran-indopak`);
-      const resTrans = await fetch(`https://api.alquran.cloud/v1/ayah/${surah}:${ayah}/en.sahih`);
+      const resText = await hidayahFetch(`https://api.alquran.cloud/v1/ayah/${surah}:${ayah}/quran-indopak`);
+      const resTrans = await hidayahFetch(`https://api.alquran.cloud/v1/ayah/${surah}:${ayah}/en.sahih`);
       const dataText = await resText.json();
       const dataTrans = await resTrans.json();
       if (dataText.code === 200) {
@@ -122,35 +122,49 @@ export default function CreateReflectionPage() {
       
       if (query.includes(':')) {
         const [b, n] = query.split(':');
-        const bookMap: any = {
-          'bukhari': 'sahih-bukhari',
-          'muslim': 'sahih-muslim',
-          'tirmidhi': 'al-tirmidhi',
-          'abudawood': 'abu-dawood',
-          'nasai': 'sunan-nasai',
-          'ibnemajah': 'ibn-e-majah',
-          'b': 'sahih-bukhari',
-          'm': 'sahih-muslim'
-        };
-        book = bookMap[b.toLowerCase().trim()] || b.toLowerCase().trim();
+        book = b.toLowerCase().trim();
         num = n.trim();
       }
 
-      const HADITH_API_KEY = process.env.NEXT_PUBLIC_HADITH_API_KEY;
-      const res = await fetch(`https://hadithapi.com/api/hadiths?apiKey=${HADITH_API_KEY}&hadithNumber=${num}&book=${book}`);
-      const data = await res.json();
+      const apiMap: any = {
+        'sahih-bukhari': 'bukhari',
+        'sahih-muslim': 'muslim',
+        'al-tirmidhi': 'tirmidhi',
+        'abu-dawood': 'abudawud',
+        'sunan-nasai': 'nasai',
+        'ibn-e-majah': 'ibnmajah',
+        'bukhari': 'bukhari',
+        'muslim': 'muslim',
+        'tirmidhi': 'tirmidhi',
+        'abudawood': 'abudawud',
+        'nasai': 'nasai',
+        'ibnemajah': 'ibnmajah',
+        'b': 'bukhari',
+        'm': 'muslim'
+      };
       
-      if (data.status === 200 && data.hadiths?.data?.length > 0) {
-        const h = data.hadiths.data[0];
-        setAttachedHadith({
-          hadithArabic: h.hadithArabic,
-          hadithEnglish: h.hadithEnglish,
-          bookName: h.book.bookName,
-          hadithNumber: h.hadithNumber,
-          status: h.status
-        });
-        setHadithRef("");
-        setIsSearchingHadith(false);
+      const apiBook = apiMap[book] || 'bukhari';
+
+      const [arRes, enRes] = await Promise.all([
+        hidayahFetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/ara-${apiBook}/${num}.json`),
+        hidayahFetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/eng-${apiBook}/${num}.json`)
+      ]);
+      
+      if (arRes.ok && enRes.ok) {
+        const arData = await arRes.json();
+        const enData = await enRes.json();
+        
+        if (arData.hadiths?.[0]) {
+          setAttachedHadith({
+            hadithArabic: arData.hadiths[0].text,
+            hadithEnglish: enData.hadiths[0].text,
+            bookName: arData.metadata?.name || apiBook,
+            hadithNumber: arData.hadiths[0].hadithnumber,
+            status: arData.hadiths[0].grades?.[0]?.grade || "Authentic"
+          });
+          setHadithRef("");
+          setIsSearchingHadith(false);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -164,8 +178,8 @@ export default function CreateReflectionPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Please choose an image smaller than 2MB");
+    if (file.size > 7 * 1024 * 1024) {
+      alert("Please choose an image smaller than 7MB");
       return;
     }
 
@@ -173,6 +187,11 @@ export default function CreateReflectionPage() {
     const reader = new FileReader();
     reader.onloadend = () => {
       setCustomImage(reader.result as string);
+      setIsImageLoading(false);
+      console.log("Custom background image loaded successfully:", file.name);
+    };
+    reader.onerror = () => {
+      alert("Failed to read image. Please try another file.");
       setIsImageLoading(false);
     };
     reader.readAsDataURL(file);
@@ -219,7 +238,7 @@ export default function CreateReflectionPage() {
 
   return (
     <MountedGuard>
-      <div className="min-h-screen bg-[#050505] text-white flex flex-col overflow-x-hidden font-sans relative">
+      <div className="min-h-[100dvh] bg-[#050505] text-white flex flex-col overflow-x-hidden font-sans relative">
         
         {/* Full-Screen Immersive Atmosphere (MATCHING FEEDCARD) */}
         <div className="fixed inset-0 z-0 overflow-hidden">
@@ -228,7 +247,8 @@ export default function CreateReflectionPage() {
               className="absolute inset-0 bg-cover bg-center no-repeat transition-all duration-700"
               style={{ 
                 backgroundImage: `url(${customImage})`,
-                backgroundPosition: 'center 30%'
+                backgroundPosition: 'center center',
+                backgroundSize: 'cover'
               }}
             />
           ) : (
@@ -258,7 +278,7 @@ export default function CreateReflectionPage() {
         </header>
 
         {/* Immersive Editor Content */}
-        <main className="relative z-10 flex-1 flex flex-col overflow-y-auto overflow-x-hidden pb-12 pt-0 sm:pt-4">
+        <main className="relative z-10 flex-1 flex flex-col pb-12 pt-0 sm:pt-4">
           
           <div className="w-full flex flex-col items-center">
             

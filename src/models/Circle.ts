@@ -46,6 +46,14 @@ const CircleSchema = new Schema({
   imageUrl: {
     type: String,
   },
+  lastMessageAt: {
+    type: Date,
+    default: Date.now,
+    index: true,
+  },
+  lastMessageText: {
+    type: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -15,7 +15,7 @@ export function Logo({ className, showText = true, ...props }: LogoProps) {
         viewBox="0 0 100 100"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="text-hidayah-gold"
+        className={cn("text-hidayah-gold", className)}
         {...props}
       >
         {/* Central Dome/Arch */}
@@ -46,7 +46,7 @@ export function Logo({ className, showText = true, ...props }: LogoProps) {
       </svg>
       
       {showText && (
-        <span className="text-hidayah-gold font-sans tracking-[0.2em] text-2xl font-light uppercase">
+        <span className={cn("text-hidayah-gold font-sans tracking-[0.2em] text-2xl font-light uppercase", className)}>
           Hidayah
         </span>
       )}

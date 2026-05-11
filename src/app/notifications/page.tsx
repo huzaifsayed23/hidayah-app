@@ -53,8 +53,8 @@ export default function NotificationsPage() {
         
         if (action === 'accept') {
           const notification = notifications.find(n => n._id === notificationId);
-          if (notification.type === 'circle_invite') {
-            router.push(`/community/${notification.circleId}`);
+          if (notification.circleId) {
+            router.push(`/community/chat?id=${notification.circleId}`);
           }
         }
       }

@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
@@ -19,7 +19,8 @@ export async function OPTIONS() {
 
 export async function POST(req: Request) {
   try {
-    await dbConnect();
+    // 1. Connect to DB
+    try { await dbConnect(); } catch (e: any) { throw new Error(`DB Connection Error: ${e.message}`); }
     
     let body;
     try {
@@ -28,68 +29,82 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { username, email, password, image } = body;
+    const { username, name, email, password, image } = body;
+    const finalUsername = username || name;
 
-    if (!username || !email || !password || password.length < 6) {
+    if (!finalUsername || !email || !password || password.length < 6) {
       return NextResponse.json(
         { message: 'Invalid credentials or missing fields' },
-        {
-          status: 400,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          },
-        }
+        { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
-    const existingEmail = await User.findOne({ email });
-    if (existingEmail) {
-      return NextResponse.json(
-        { message: 'Email already exists' },
-        {
-          status: 409,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          },
-        }
-      );
+    // 2. Check for existing email
+    try {
+      const existingEmail = await User.findOne({ email });
+      if (existingEmail) {
+        return NextResponse.json(
+          { message: 'Email already exists' },
+          { status: 409, headers: { 'Access-Control-Allow-Origin': '*' } }
+        );
+      }
+    } catch (e: any) {
+      throw new Error(`Email Check Error: ${e.message}`);
     }
 
-    const existingUsername = await User.findOne({ username });
-    if (existingUsername) {
-      return NextResponse.json(
-        { message: 'That username already exists. Please try a different username.' },
-        {
-          status: 409,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          },
-        }
-      );
+    // 3. Check for existing username
+    try {
+      const existingUsername = await User.findOne({ username: finalUsername });
+      if (existingUsername) {
+        return NextResponse.json(
+          { message: 'That username already exists. Please try a different username.' },
+          { status: 409, headers: { 'Access-Control-Allow-Origin': '*' } }
+        );
+      }
+    } catch (e: any) {
+      throw new Error(`Username Check Error: ${e.message}`);
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    const user = await User.create({
-      username,
-      email,
-      password: hashedPassword,
-      image: image || null,
-    });
+    // 4. Create User
+    let user;
+    try {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      user = await User.create({
+        username: finalUsername,
+        email,
+        password: hashedPassword,
+        image: image || null,
+      });
+    } catch (e: any) {
+      throw new Error(`User Creation Error: ${e.message}`);
+    }
 
-    const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    const token = jwt.sign(
-      { userId: user._id.toString(), email: user.email, username: user.username },
-      jwtSecret,
-      { expiresIn: '7d' }
-    );
+    // 5. Generate JWT
+    let token;
+    let step = "JWT Signing";
+    try {
+      const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
+      token = jwt.sign(
+        { userId: user._id.toString(), email: user.email, username: user.username },
+        jwtSecret,
+        { expiresIn: '7d' }
+      );
+    } catch (e: any) {
+      throw new Error(`JWT Signing Error: ${e.message}`);
+    }
 
+    step = "Cookie Setting";
     const isProduction = process.env.NODE_ENV === 'production';
-    const cookieStore = (await cookies().catch(() => null));
+    let cookieStore = null;
+    try {
+      cookieStore = await cookies();
+    } catch (e) {
+      console.warn("Cookies access failed:", e);
+    }
     
     if (cookieStore) {
       try {
-        cookieStore.set('hidayah_token', token, {
+        await cookieStore.set('hidayah_token', token, {
           httpOnly: true,
           secure: isProduction,
           sameSite: isProduction ? 'none' : 'lax',
@@ -97,32 +112,52 @@ export async function POST(req: Request) {
           path: '/',
         });
       } catch (e) {
-        console.warn("Cookie set failed (likely static export mode)");
+        console.warn("Cookie set failed:", e);
       }
     }
 
 
     return NextResponse.json(
-      { message: 'Account created successfully', userId: user._id, acceptedTerms: user.acceptedTerms, token },
+      { 
+        message: 'Account created successfully', 
+        userId: user._id, 
+        acceptedTerms: user.acceptedTerms, 
+        token 
+      },
       {
         status: 201,
         headers: {
           'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
       }
     );
     
   } catch (error: any) {
     console.error('Signup error:', error);
+    
+    // Return more details to help debugging production APK issues
+    const errorMessage = error.message || 'Unknown Server Error';
+    const isConnectionError = errorMessage.includes('DB Connection') || errorMessage.includes('connection');
+
     return NextResponse.json(
       { 
-        message: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: errorMessage,
+        error: true,
+        code: isConnectionError ? 'DB_ERROR' : 'AUTH_ERROR',
+        env: {
+          hasMongo: !!process.env.MONGODB_URI,
+          hasJwt: !!process.env.JWT_SECRET,
+          nodeEnv: process.env.NODE_ENV
+        }
       },
       {
         status: 500,
         headers: {
           'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
       }
     );

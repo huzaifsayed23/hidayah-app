@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
@@ -19,7 +19,8 @@ export async function OPTIONS() {
 
 export async function POST(req: Request) {
   try {
-    await dbConnect();
+    // 1. Connect to DB
+    try { await dbConnect(); } catch (e: any) { throw new Error(`DB Connection Error: ${e.message}`); }
     
     let body;
     try {
@@ -33,67 +34,86 @@ export async function POST(req: Request) {
     if (!email || !password) {
       return NextResponse.json(
         { message: 'Email and password are required' },
-        {
-          status: 400,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          },
-        }
+        { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
-    // Include the password field which is normally excluded
-    const user = await User.findOne({ email }).select('+password');
+    // 2. Find User
+    let user;
+    try {
+      user = await User.findOne({ email }).select('+password');
+    } catch (e: any) {
+      throw new Error(`User Find Error: ${e.message}`);
+    }
+
     if (!user) {
       return NextResponse.json(
         { message: 'Invalid credentials' },
-        {
-          status: 401,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          },
-        }
+        { status: 401, headers: { 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
     if (user.isSuspended) {
       return NextResponse.json(
         { message: 'Your account has been suspended for community guideline violations.' },
-        {
-          status: 403,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          },
-        }
+        { status: 403, headers: { 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    // 3. Compare Password
+    let isMatch;
+    try {
+      isMatch = await bcrypt.compare(password, user.password);
+    } catch (e: any) {
+      throw new Error(`Password Comparison Error: ${e.message}`);
+    }
+
     if (!isMatch) {
       return NextResponse.json(
         { message: 'Invalid credentials' },
-        {
-          status: 401,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          },
-        }
+        { status: 401, headers: { 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
-    const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    const token = jwt.sign(
-      { userId: user._id.toString(), email: user.email, username: user.username },
-      jwtSecret,
-      { expiresIn: '7d' }
-    );
+    // 4. Update Profile if Admin
+    try {
+      if (user.email?.toLowerCase() === 'huzaifsayed454@gmail.com' && user.username !== 'HuzaifSayed') {
+        user.username = 'HuzaifSayed';
+        await user.save();
+      } else if (!user.username) {
+        user.username = user.email ? user.email.split('@')[0] : 'User' + Math.floor(Math.random() * 1000);
+        await user.save();
+      }
+    } catch (e: any) {
+      throw new Error(`Profile Update Error: ${e.message}`);
+    }
 
+    // 5. Generate JWT
+    let token;
+    let step = "JWT Signing";
+    try {
+      const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
+      token = jwt.sign(
+        { userId: user._id.toString(), email: user.email, username: user.username },
+        jwtSecret,
+        { expiresIn: '7d' }
+      );
+    } catch (e: any) {
+      throw new Error(`JWT Signing Error: ${e.message}`);
+    }
+
+    step = "Cookie Setting";
     const isProduction = process.env.NODE_ENV === 'production';
-    const cookieStore = (await cookies().catch(() => null)); 
+    let cookieStore = null;
+    try {
+      cookieStore = await cookies();
+    } catch (e) {
+      console.warn("Cookies access failed:", e);
+    }
     
     if (cookieStore) {
       try {
-        cookieStore.set('hidayah_token', token, {
+        await cookieStore.set('hidayah_token', token, {
           httpOnly: true,
           secure: isProduction,
           sameSite: isProduction ? 'none' : 'lax',
@@ -101,33 +121,52 @@ export async function POST(req: Request) {
           path: '/',
         });
       } catch (e) {
-        // Build-time or static-mode safety
-        console.warn("Cookie set failed (likely static export mode)");
+        console.warn("Cookie set failed:", e);
       }
     }
 
 
     return NextResponse.json(
-      { message: 'Logged in successfully', userId: user._id, acceptedTerms: user.acceptedTerms, token },
+      { 
+        message: 'Logged in successfully', 
+        userId: user._id, 
+        acceptedTerms: user.acceptedTerms, 
+        token 
+      },
       {
         status: 200,
         headers: {
           'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
       }
     );
     
   } catch (error: any) {
     console.error('CRITICAL LOGIN ERROR:', error);
+    
+    // Return more details to help debugging production APK issues
+    const errorMessage = error.message || 'Unknown Server Error';
+    const isConnectionError = errorMessage.includes('DB Connection') || errorMessage.includes('connection');
+    
     return NextResponse.json(
       { 
-        message: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: errorMessage,
+        error: true,
+        code: isConnectionError ? 'DB_ERROR' : 'AUTH_ERROR',
+        env: {
+          hasMongo: !!process.env.MONGODB_URI,
+          hasJwt: !!process.env.JWT_SECRET,
+          nodeEnv: process.env.NODE_ENV
+        }
       },
       {
         status: 500,
         headers: {
           'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
       }
     );

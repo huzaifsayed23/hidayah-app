@@ -6,6 +6,7 @@ import FeedCard from './FeedCard';
 import UserSearchResult from './UserSearchResult';
 import Link from 'next/link';
 import { Users, BookOpen } from 'lucide-react';
+import { hidayahFetch } from '@/lib/api';
 
 interface CommunityFeedProps {
   initialPosts: any[];
@@ -21,14 +22,31 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const [activeTab, setActiveTab] = useState<'reflections' | 'users'>('reflections');
 
+  const filteredPosts = initialPosts.filter(post => 
+    post.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    post.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    post.verse?.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    post.verse?.surah?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   useEffect(() => {
     if (searchQuery.length >= 2) {
+      // Auto-switch to users tab if query starts with @ or looks like a username search
+      if (searchQuery.startsWith('@') && activeTab !== 'users') {
+        setActiveTab('users');
+      }
+
       const timer = setTimeout(async () => {
         setIsSearchingUsers(true);
         try {
-          const res = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`);
+          const res = await hidayahFetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`);
           const data = await res.json();
           setUserResults(data.users || []);
+          
+          // Intelligent switch: If no posts match but users ARE found, switch to users tab
+          if (filteredPosts.length === 0 && data.users?.length > 0 && activeTab === 'reflections') {
+            setActiveTab('users');
+          }
         } catch (e) {
           console.error("User search failed", e);
         } finally {
@@ -39,14 +57,7 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
     } else {
       setUserResults([]);
     }
-  }, [searchQuery]);
-
-  const filteredPosts = initialPosts.filter(post => 
-    post.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.verse?.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.verse?.surah?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  }, [searchQuery, activeTab, filteredPosts.length]);
 
   return (
     <>
@@ -85,6 +96,26 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
         </div>
       )}
 
+      {/* Member Peek (Only shown when on reflections tab but members found) */}
+      {searchQuery.length > 0 && activeTab === 'reflections' && userResults.length > 0 && (
+        <div className="mb-8 p-4 bg-[var(--color-hidayah-gold)]/5 rounded-[32px] border border-[var(--color-hidayah-gold)]/20 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-hidayah-gold)]">Matching Members</h4>
+            <button onClick={() => setActiveTab('users')} className="text-[10px] font-bold text-[var(--color-hidayah-dark)] opacity-40 hover:opacity-100">View All</button>
+          </div>
+          <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-1">
+            {userResults.slice(0, 5).map(user => (
+              <Link key={user.id} href={`/profile/${user.username}`} className="flex flex-col items-center shrink-0 gap-1.5 group">
+                <div className="w-11 h-11 rounded-full bg-white border border-[var(--color-hidayah-border)]/20 overflow-hidden flex items-center justify-center font-bold text-xs shadow-sm group-hover:border-[var(--color-hidayah-gold)] transition-colors">
+                   {user.image ? <img src={user.image} className="w-full h-full object-cover" /> : user.username.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-[9px] font-bold text-[var(--color-hidayah-dark)] opacity-60 group-hover:opacity-100 transition-opacity truncate w-14 text-center">@{user.username}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mood Filter (Hidden when searching members) */}
       {!(searchQuery.length > 0 && activeTab === 'users') && (
         <div className="flex gap-2.5 mb-8 horizontal-slider hide-scrollbar pb-2">
@@ -107,7 +138,6 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
       {/* Feed Content */}
       <div className="flex flex-col gap-6">
         {searchQuery.length > 0 && activeTab === 'users' ? (
-          // User Results (omitted for brevity, keep existing logic)
           <div className="flex flex-col gap-2 pr-1 pb-4">
             {isSearchingUsers ? (
               <div className="py-12 text-center animate-pulse">
@@ -125,15 +155,11 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
             )}
           </div>
         ) : (
-          // Post Results with Paced Scrolling
           filteredPosts.length > 0 ? (
             <div className="flex flex-col gap-6">
-              {/* First 4 posts - Immediate */}
               {filteredPosts.slice(0, 4).map((post: any) => (
                 <FeedCard key={post._id} id={post._id} {...post} currentUserId={currentUserId} />
               ))}
-
-              {/* Subsequent posts - Revealed in chunks of 4 with a delay */}
               {filteredPosts.length > 4 && (
                 <PacedFeed 
                   posts={filteredPosts.slice(4)} 
@@ -152,9 +178,6 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
   );
 }
 
-/**
- * PacedFeed Component: Handles revealing posts in chunks with a simple 1.5s delay
- */
 function PacedFeed({ posts, currentUserId }: { posts: any[], currentUserId: string }) {
   const [chunksToReveal, setChunksToReveal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -167,7 +190,6 @@ function PacedFeed({ posts, currentUserId }: { posts: any[], currentUserId: stri
     const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && !isLoading && chunksToReveal < totalChunks) {
         setIsLoading(true);
-        // Artificial 1.5s delay as requested
         setTimeout(() => {
           setChunksToReveal(prev => prev + 1);
           setIsLoading(false);
@@ -184,12 +206,9 @@ function PacedFeed({ posts, currentUserId }: { posts: any[], currentUserId: stri
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Revealed Chunks */}
       {posts.slice(0, chunksToReveal * chunkSize).map((post: any) => (
         <FeedCard key={post._id} id={post._id} {...post} currentUserId={currentUserId} />
       ))}
-
-      {/* Loading Indicator / Observer Target */}
       {chunksToReveal < totalChunks && (
         <div ref={observerRef} className="py-12 flex flex-col items-center justify-center gap-3">
           <div className="w-6 h-6 border-2 border-[var(--color-hidayah-gold)] border-t-transparent rounded-full animate-spin opacity-40" />

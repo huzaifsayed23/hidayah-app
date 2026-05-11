@@ -27,8 +27,8 @@ export const getPusherClient = () => {
 
     // Force hardcoded Vercel URL for native mobile apps to bypass local networking restrictions
     const authEndpoint = isCapacitor 
-      ? `https://hidayah-lgq6.vercel.app/api/pusher/auth` 
-      : (isBrowser ? '/api/pusher/auth' : `https://hidayah-lgq6.vercel.app/api/pusher/auth`);
+      ? `${HIDAYAH_API_URL}/api/pusher/auth` 
+      : (isBrowser ? '/api/pusher/auth' : `${HIDAYAH_API_URL}/api/pusher/auth`);
 
     pusherClient = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,

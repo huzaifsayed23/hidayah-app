@@ -222,7 +222,7 @@ export default function CirclesPage() {
           filteredCircles.map((circle) => (
             <div key={circle._id} className="relative group/item">
               <Link
-                href={activeTab === 'my' ? `/community/${circle.slug || circle._id}` : '#'}
+                href={activeTab === 'my' ? `/community/chat?id=${circle.slug || circle._id}` : '#'}
                 onClick={(e) => activeTab === 'discover' && e.preventDefault()}
                 onContextMenu={(e) => activeTab === 'my' && handleContextMenu(e, circle)}
                 onTouchStart={() => activeTab === 'my' && handleTouchStart(circle)}
@@ -241,7 +241,11 @@ export default function CirclesPage() {
                         </h3>
                         {circle.privacy === 'private' ? <Lock className="w-3.5 h-3.5 opacity-30" /> : <Globe className="w-3.5 h-3.5 opacity-30" />}
                       </div>
-                      <p className="text-xs text-[var(--color-hidayah-dark)] opacity-50 mt-0.5 line-clamp-1">{circle.description}</p>
+                      <p className="text-xs text-[var(--color-hidayah-dark)] opacity-50 mt-1 line-clamp-1">
+                        {circle.lastMessageText ? (
+                          <span className="text-[var(--color-hidayah-gold)] font-medium">Last: {circle.lastMessageText}</span>
+                        ) : circle.description}
+                      </p>
                     </div>
                   </div>
                   {activeTab === 'discover' ? (

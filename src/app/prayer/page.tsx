@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Bell, BellOff, Calendar, Clock, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Bell, BellOff, Calendar, Clock, Loader2, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { safeStorage } from '@/lib/storage';
+import { Capacitor } from '@capacitor/core';
 
 interface PrayerTimes {
   Fajr: string;
@@ -29,54 +31,98 @@ export default function PrayerDetailsPage() {
     Isha: true,
   });
 
-  useEffect(() => {
-    const date = new Date();
-    const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    setToday(date.toLocaleDateString('en-US', options));
+  const fetchTimes = async (lat: number, lng: number) => {
+    try {
+      const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=2`);
+      const data = await res.json();
+      if (data.code === 200) {
+        setTimes(data.data.timings);
+        
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+        const prayerNames = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+        let current = "Isha";
 
-    const fetchTimes = async (lat: number, lng: number) => {
-      try {
-        const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=2`);
-        const data = await res.json();
-        if (data.code === 200) {
-          setTimes(data.data.timings);
-          
-          const now = new Date();
-          const currentTime = now.getHours() * 60 + now.getMinutes();
-          const prayerNames = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
-          let current = "Isha";
-
-          for (let i = 0; i < prayerNames.length; i++) {
-            const [hours, minutes] = (data.data.timings as any)[prayerNames[i]].split(':').map(Number);
-            const prayerTime = hours * 60 + minutes;
-            if (currentTime < prayerTime) {
-              current = i === 0 ? "Isha" : prayerNames[i - 1];
-              break;
-            }
+        for (let i = 0; i < prayerNames.length; i++) {
+          const [hours, minutes] = (data.data.timings as any)[prayerNames[i]].split(':').map(Number);
+          const prayerTime = hours * 60 + minutes;
+          if (currentTime < prayerTime) {
+            current = i === 0 ? "Isha" : prayerNames[i - 1];
+            break;
           }
-          setCurrentPrayer(current);
-
-          const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-          const geoData = await geoRes.json();
-          setLocationName(geoData.address.city || geoData.address.town || "My Location");
         }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+        setCurrentPrayer(current);
+
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        const geoData = await geoRes.json();
+        setLocationName(geoData.address.city || geoData.address.town || "My Location");
       }
-    };
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => fetchTimes(pos.coords.latitude, pos.coords.longitude),
-        () => {
-          fetchTimes(21.4225, 39.8262); // Makkah fallback
-          setLocationName("Makkah");
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const date = new Date();
+      const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      setToday(date.toLocaleDateString('en-US', options));
+
+      // 1. Try Cached Location First
+      const cached = safeStorage.getItem('hidayah_location');
+      if (cached) {
+        try {
+          const { lat, lng, name } = JSON.parse(cached);
+          setLocationName(name);
+          fetchTimes(lat, lng);
+        } catch (e) {
+          handleAutoDetect();
         }
-      );
+      } else {
+        handleAutoDetect();
+      }
     }
   }, []);
+
+  const handleAutoDetect = () => {
+    if (!("geolocation" in navigator)) {
+      setLocationName("Makkah");
+      fetchTimes(21.4225, 39.8262);
+      return;
+    }
+
+    setLoading(true);
+    setLocationName("Detecting...");
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        fetchTimes(lat, lng);
+        safeStorage.setItem('hidayah_location', JSON.stringify({
+          lat,
+          lng,
+          name: "My Location"
+        }));
+      },
+      (err) => {
+        console.warn("Geolocation error:", err);
+        // If it's a timeout or permission denied, fallback to Makkah if no cache
+        if (!safeStorage.getItem('hidayah_location')) {
+          fetchTimes(21.4225, 39.8262); 
+          setLocationName("Makkah (Default)");
+        }
+        setLoading(false);
+      },
+      { 
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0 
+      }
+    );
+  };
 
   const toggleNotification = (prayer: string) => {
     setNotifications(prev => ({
@@ -115,10 +161,14 @@ export default function PrayerDetailsPage() {
             <ArrowLeft className="w-6 h-6 text-[var(--color-hidayah-dark)]" />
           </button>
           <div className="flex flex-col items-center">
-             <div className="flex items-center gap-1.5 text-[var(--color-hidayah-dark)]/50 text-xs font-bold uppercase tracking-widest">
+             <button 
+               onClick={handleAutoDetect}
+               className="flex items-center gap-1.5 text-[var(--color-hidayah-gold)] text-[10px] font-bold uppercase tracking-widest bg-[var(--color-hidayah-gold)]/10 px-3 py-1 rounded-full hover:bg-[var(--color-hidayah-gold)]/20 transition-all active:scale-95"
+             >
                 <MapPin className="w-3 h-3" />
                 {locationName}
-             </div>
+                <RefreshCw className="w-2.5 h-2.5 ml-1" />
+             </button>
           </div>
           <div className="w-10" />
         </div>

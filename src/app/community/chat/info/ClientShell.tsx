@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   ArrowLeft, Users, ShieldCheck, LogOut, Plus, 
   Search, Loader2, Info, User, Check, X, 
@@ -15,7 +15,8 @@ import { hidayahFetch } from '@/lib/api';
 
 export default function CircleInfoPage() {
   const router = useRouter();
-  const { id } = useParams();
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id') || '';
   const [circle, setCircle] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
@@ -141,7 +142,7 @@ export default function CircleInfoPage() {
   };
 
   const handleShare = () => {
-    const url = window.location.origin + `/community/${circle?.slug || id}`;
+    const url = window.location.origin + `/community/chat?id=${circle?.slug || id}`;
     navigator.clipboard.writeText(url);
     setShowCopied(true);
     setTimeout(() => setShowCopied(false), 2000);
@@ -262,7 +263,7 @@ export default function CircleInfoPage() {
 
   const isCreator = currentUser && circle && (
     String(circle.creatorId?._id || circle.creatorId) === String(currentUser.id) || 
-    currentUser.email === 'huzaifsayed454@gmail.com'
+    currentUser.email?.toLowerCase() === 'huzaifsayed454@gmail.com'
   );
 
   const isAdmin = currentUser && circle && (
@@ -295,7 +296,7 @@ export default function CircleInfoPage() {
             <h1 className="text-xl font-serif font-bold text-[var(--color-hidayah-dark)]">Circle Info</h1>
           </div>
           <button 
-            onClick={() => router.push(`/community/${circle?.slug || id}`)}
+            onClick={() => router.push(`/community/chat?id=${circle?.slug || id}`)}
             className="flex items-center gap-2 px-4 py-2 bg-[var(--color-hidayah-dark)] text-[var(--color-hidayah-primary)] rounded-full text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all"
           >
             <MessageCircle className="w-4 h-4" /> Open Chat

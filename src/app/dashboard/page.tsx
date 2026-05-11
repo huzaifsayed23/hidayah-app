@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BookOpen, Heart, Users, User as UserIcon, ArrowLeft, MessageSquare, Key, Clock, Moon, GraduationCap, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { hidayahFetch } from "@/lib/api";
 
 export default function DashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -14,7 +15,7 @@ export default function DashboardPage() {
     // Client-side auth check
     const checkAuth = async () => {
       try {
-        const res = await fetch('/api/auth/me');
+        const res = await hidayahFetch('/api/auth/me');
         if (res.ok) {
           const data = await res.json();
           setIsAdmin(data.isAdmin);
@@ -71,13 +72,18 @@ export default function DashboardPage() {
         })}
       </div>
       
-      <Link 
-        href="/auth"
-        className="flex items-center gap-2 px-6 py-3 rounded-full border border-hidayah-border/50 text-hidayah-dark hover:bg-hidayah-gold hover:text-white hover:border-hidayah-gold transition-all duration-300 mt-4"
+      <button 
+        onClick={() => {
+          localStorage.removeItem('hidayah_token');
+          localStorage.removeItem('hidayah_community_cache');
+          localStorage.removeItem('hidayah_profile_cache');
+          router.push('/auth');
+        }}
+        className="flex items-center gap-2 px-6 py-3 rounded-full border border-hidayah-border/50 text-hidayah-dark hover:bg-hidayah-gold hover:text-white hover:border-hidayah-gold transition-all duration-300 mt-4 active:scale-95"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span className="text-sm font-medium tracking-widest uppercase">Start Over</span>
-      </Link>
+        <span className="text-sm font-medium tracking-widest uppercase">Sign Out</span>
+      </button>
     </main>
   );
 }

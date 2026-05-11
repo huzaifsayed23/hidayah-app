@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Bookmark, Share2, Check, Loader2 } from 'lucide-react';
+import { Bookmark, Share2, Loader2 } from 'lucide-react';
 import { hidayahFetch } from '@/lib/api';
 
 interface HadithCardProps {
@@ -71,7 +71,6 @@ export default function HadithCard({
     ? 'bg-transparent'
     : 'bg-[var(--color-hidayah-secondary)]/90 backdrop-blur-md';
 
-
   const shineStyle = customTextColor ? {
     color: customTextColor,
     textShadow: '0.5px 0.5px 1px rgba(0,0,0,0.2)'
@@ -83,7 +82,6 @@ export default function HadithCard({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
       className={`relative w-full p-4 sm:p-5 rounded-[32px] ${cardBg} border ${borderCol} ${transparent ? '' : 'shadow-xl'} overflow-hidden group`}
-
     >
       {/* Glossy overlay effect */}
       <div className={`absolute inset-0 bg-gradient-to-br ${isLightText ? 'from-white/10' : 'from-white/30'} to-transparent pointer-events-none`} />
@@ -111,36 +109,36 @@ export default function HadithCard({
         </div>
       </header>
 
-      {/* Arabic Content */}
-      <div className="mb-8">
-        <p 
-          className={`font-arabic text-lg sm:text-xl md:text-2xl text-center allow-select ${customTextColor ? '' : textColor}`} 
-          style={shineStyle}
-          dir="rtl"
-        >
-          {hadith.hadithArabic}
-        </p>
+      {/* Content Area */}
+      <div className="space-y-6">
+        {/* Arabic Content */}
+        <div>
+          <p 
+            className={`font-arabic text-lg sm:text-xl md:text-2xl text-center allow-select ${customTextColor ? '' : textColor}`} 
+            style={shineStyle}
+            dir="rtl"
+          >
+            {hadith.hadithArabic}
+          </p>
+        </div>
 
-      </div>
-
-      {/* English Content */}
-      <div className="pr-2 touch-auto">
-        <p 
-          className={`font-serif text-sm sm:text-base md:text-lg leading-[1.6] allow-select ${customTextColor ? '' : (isLightText ? 'text-white/80' : 'text-[var(--color-hidayah-dark)]/80')} text-justify pb-2`}
-          style={shineStyle}
-        >
-          {hadith.hadithEnglish}
-        </p>
-
+        {/* Translation Content */}
+        <div className="pr-2 touch-auto">
+          <p 
+            className={`font-serif text-sm sm:text-base md:text-lg leading-[1.6] allow-select ${customTextColor ? '' : (isLightText ? 'text-white/80' : 'text-[var(--color-hidayah-dark)]/80')} text-justify pb-2`}
+            style={shineStyle}
+          >
+            {hadith.hadithEnglish}
+          </p>
+        </div>
       </div>
 
       {/* Footer: Grading Badge */}
-      <footer className="mt-4 flex items-center justify-between">
+      <footer className="mt-6 flex items-center justify-between">
         <div className={`px-4 py-1.5 rounded-full bg-[var(--color-hidayah-gold)] ${isLightText ? 'text-white' : 'text-[var(--color-hidayah-primary)]'} text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-gold/20`}>
           {hadith.status}
         </div>
       </footer>
-
     </motion.div>
   );
 }

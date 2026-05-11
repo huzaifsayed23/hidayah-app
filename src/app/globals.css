@@ -61,51 +61,45 @@
   html,
   body {
     max-width: 100vw;
+    min-height: 100% !important; /* Allow growth */
     overflow-x: hidden;
     background-color: var(--color-hidayah-primary);
     color: var(--color-hidayah-dark);
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
-    touch-action: manipulation;
+    touch-action: pan-y pinch-zoom;
     -webkit-tap-highlight-color: transparent;
-    overscroll-behavior-y: none; /* Prevent pull-to-refresh bounce on mobile */
   }
 
-  /* Smooth Scrolling Physics for Mobile */
-  * {
-    -webkit-overflow-scrolling: touch;
+  /* Ensure main containers allow the page to grow and scroll */
+  main, .page-container {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow-y: visible !important; /* Allow body to handle scroll */
+    padding-bottom: 120px; /* Space for BottomNav */
+  }
+
+  .mobile-scroll-container {
+    height: auto;
+    min-height: 100%;
+    overflow-y: visible !important;
+  }
+
+  /* Specialized internal scroll for Chat and Feed */
+  .internal-scroll-container {
+    height: 100%;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
   
   body {
     background-color: var(--color-hidayah-primary);
     color: var(--color-hidayah-dark);
     font-family: var(--font-sans);
-    overflow-x: hidden;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    scroll-behavior: smooth;
     user-select: none;
     -webkit-user-select: none;
-    -webkit-touch-callout: none;
-    
-    /* Hardware acceleration for smooth mobile transitions */
-    will-change: transform;
-    backface-visibility: hidden;
-    transform: translateZ(0);
-    perspective: 1000px;
-    overscroll-behavior-y: contain;
-  }
-  
-  /* Main scrollable containers optimization */
-  .mobile-scroll-container {
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-y pinch-zoom;
-    will-change: transform;
-    backface-visibility: hidden;
-    transform: translateZ(0);
-    overscroll-behavior-y: auto;
+    overflow-y: auto !important; /* Body handles the scroll now */
   }
   
   /* Allow selection only in inputs and specific areas */
@@ -198,7 +192,7 @@
   .font-arabic {
     font-family: var(--font-arabic);
     font-weight: 400;
-    line-height: 2.2; 
+    line-height: 1.8; 
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     letter-spacing: 0;
@@ -213,10 +207,17 @@
   .mushaf-layout {
     text-align: justify;
     text-justify: inter-word;
-    line-height: 1.95; /* Compact sweet spot for V2 legibility */
+    line-height: 1.6; /* Increased for better legibility and 'no half cut' feel */
     font-family: var(--font-arabic);
     word-spacing: 0.1em;
     text-rendering: optimizeLegibility;
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    padding: 1.5rem 1rem; /* Better breathing room */
+    word-break: keep-all;
+    -webkit-font-smoothing: antialiased;
+    color: #2E2A26;
   }
   
   /* Safe area for mobile devices */

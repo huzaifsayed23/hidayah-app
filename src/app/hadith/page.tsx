@@ -45,41 +45,52 @@ export default function DailyHadithPage() {
     try {
       const bookInfo = BOOKS.find(b => b.id === bookSlug);
       const maxCount = bookInfo?.count || 1000;
-      const randomNum = Math.floor(Math.random() * maxCount) + 1;
       
-      const res = await fetch(`https://hadithapi.com/api/hadiths?apiKey=${HADITH_API_KEY}&hadithNumber=${randomNum}&book=${bookSlug}`);
-      const data = await res.json();
+      const mapBookId = (id: string) => {
+        const map: any = {
+          'sahih-bukhari': 'bukhari',
+          'sahih-muslim': 'muslim',
+          'al-tirmidhi': 'tirmidhi',
+          'abu-dawood': 'abudawud',
+          'sunan-nasai': 'nasai',
+          'ibn-e-majah': 'ibnmajah'
+        };
+        return map[id] || 'bukhari';
+      };
 
-      if (data.status === 200 && data.hadiths?.data?.length > 0) {
-        const h = data.hadiths.data[0];
-        setHadith({
-          hadithArabic: h.hadithArabic,
-          hadithEnglish: h.hadithEnglish,
-          bookName: h.book.bookName,
-          hadithNumber: h.hadithNumber,
-          status: h.status,
-          bookSlug: bookSlug
-        });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        // Fallback to a lower number if high number fails
-        const fallbackNum = Math.floor(Math.random() * 500) + 1;
-        const res2 = await fetch(`https://hadithapi.com/api/hadiths?apiKey=${HADITH_API_KEY}&hadithNumber=${fallbackNum}&book=${bookSlug}`);
-        const data2 = await res2.json();
-        
-        if (data2.status === 200 && data2.hadiths?.data?.length > 0) {
-          const h = data2.hadiths.data[0];
-          setHadith({
-            hadithArabic: h.hadithArabic,
-            hadithEnglish: h.hadithEnglish,
-            bookName: h.book.bookName,
-            hadithNumber: h.hadithNumber,
-            status: h.status,
-            bookSlug: bookSlug
-          });
-        } else {
-          setError(`Could not find a random Hadith in ${bookSlug}.`);
+      const apiId = mapBookId(bookSlug);
+      
+      // Try up to 3 times to find a valid random hadith (since some numbers might be missing in sequence)
+      let found = false;
+      for (let i = 0; i < 3; i++) {
+        const randomNum = Math.floor(Math.random() * maxCount) + 1;
+        const [arRes, enRes] = await Promise.all([
+          fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/ara-${apiId}/${randomNum}.json`),
+          fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/eng-${apiId}/${randomNum}.json`)
+        ]);
+
+        if (arRes.ok && enRes.ok) {
+          const arData = await arRes.json();
+          const enData = await enRes.json();
+          
+          if (arData.hadiths?.[0] && enData.hadiths?.[0]) {
+            setHadith({
+              hadithArabic: arData.hadiths[0].text,
+              hadithEnglish: enData.hadiths[0].text,
+              bookName: bookInfo?.name,
+              hadithNumber: arData.hadiths[0].hadithnumber,
+              status: arData.hadiths[0].grades?.[0]?.grade || "Authentic",
+              bookSlug: bookSlug
+            });
+            found = true;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            break;
+          }
         }
+      }
+
+      if (!found) {
+        setError(`Could not find a random Hadith in ${bookSlug} after multiple attempts.`);
       }
     } catch (err) {
       setError("Failed to connect to Hadith service.");
@@ -99,30 +110,9 @@ export default function DailyHadithPage() {
 
     setLoading(true);
     setIsSearching(true);
-    setError("");
-    
-    try {
-      const res = await fetch(`https://hadithapi.com/api/hadiths?apiKey=${HADITH_API_KEY}&hadithEnglish=${encodeURIComponent(searchQuery)}&paginate=20`);
-      const data = await res.json();
-
-      if (data.status === 200 && data.hadiths?.data?.length > 0) {
-        setSearchResults(data.hadiths.data.map((h: any) => ({
-          hadithArabic: h.hadithArabic,
-          hadithEnglish: h.hadithEnglish,
-          bookName: h.book.bookName,
-          hadithNumber: h.hadithNumber,
-          status: h.status,
-          bookSlug: h.book.bookSlug
-        })));
-      } else {
-        setSearchResults([]);
-        setError("No hadiths found for your search.");
-      }
-    } catch (err) {
-      setError("Search failed. Please check your connection.");
-    } finally {
-      setLoading(false);
-    }
+    setError("Search is temporarily unavailable. The Hadith API search endpoint is currently down. Please enjoy the random Hadith explorer in the meantime.");
+    setSearchResults([]);
+    setLoading(false);
   };
 
   const showPreviousHadith = () => {
@@ -142,7 +132,7 @@ export default function DailyHadithPage() {
   }, [router]);
 
   return (
-    <main className="min-h-screen bg-hidayah-primary p-4 sm:p-6 pb-24 flex flex-col items-center mobile-scroll-container">
+    <main className="min-h-screen bg-hidayah-primary p-4 sm:p-6 pb-32 flex flex-col items-center">
       <div className="w-full max-w-3xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8 sticky top-0 z-40 bg-hidayah-primary/80 backdrop-blur-md py-2">
@@ -336,7 +326,6 @@ export default function DailyHadithPage() {
                       router.push('/community/circles/create?attach=hadith');
                     }}
                   />
-
                   <div className="text-center flex flex-col sm:flex-row gap-4 justify-center">
                     <button
                       onClick={() => setSelectedBook(null)}

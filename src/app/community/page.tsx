@@ -7,6 +7,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import CommunityFeed from '@/components/community/CommunityFeed';
 import BottomNav from '@/components/BottomNav';
 import { hidayahFetch } from '@/lib/api';
+import { safeStorage } from '@/lib/storage';
+import { motion } from 'framer-motion';
 import { SPIRITUAL_THEMES } from '@/lib/gradients';
 
 const MOODS = ["All", ...SPIRITUAL_THEMES];
@@ -22,47 +24,61 @@ function CommunityContent() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
+    // Instant load from localStorage cache if available
+    const cachedPosts = safeStorage.getItem('hidayah_community_cache');
+    if (cachedPosts) {
       try {
-        // 1. Auth Check
+        const parsed = JSON.parse(cachedPosts);
+        setPosts(parsed.posts || []);
+        setUserName(parsed.userName || "User");
+        setCurrentUserId(parsed.userId || "");
+        setIsLoading(false); // Hide spinner if we have cached data
+      } catch (e) {}
+    }
+
+    const fetchData = async () => {
+      // If we don't have cache, show loader
+      if (!safeStorage.getItem('hidayah_community_cache')) setIsLoading(true);
+      
+      try {
         const meRes = await hidayahFetch("/api/auth/me");
         if (!meRes.ok) {
           router.push("/auth");
           return;
         }
-        const meData = await meRes.json();
-        if (!meData.authenticated) {
-          router.push("/auth");
-          return;
-        }
 
-        // 2. Profile Data (for username and terms check)
-        const profileRes = await hidayahFetch("/api/users/profile");
+        const [profileRes, postsRes] = await Promise.all([
+          hidayahFetch("/api/users/profile"),
+          hidayahFetch(`/api/posts?mood=${currentMood === 'All' ? '' : currentMood}`)
+        ]);
+
+        let userId = "";
+        let uName = "User";
+        let fetchedPosts = [];
+
         if (profileRes.ok) {
           const profileData = await profileRes.json();
           const user = profileData.user;
-          
-          if (user.acceptedTerms === false) {
-            router.push("/agreement");
-            return;
-          }
-
-          setCurrentUserId(user._id);
-          if (user.username) {
-            setUserName(`@${user.username}`);
-          } else {
-            const prefix = user.email.split('@')[0];
-            setUserName(prefix.charAt(0).toUpperCase() + prefix.slice(1).replace(/[0-9]/g, ''));
-          }
+          userId = user._id;
+          uName = user.username ? `@${user.username}` : user.email.split('@')[0];
+          setCurrentUserId(userId);
+          setUserName(uName);
         }
 
-        // 3. Posts Data
-        const postsRes = await hidayahFetch(`/api/posts?mood=${currentMood === 'All' ? '' : currentMood}`);
         if (postsRes.ok) {
           const postsData = await postsRes.json();
-          setPosts(postsData.posts);
+          fetchedPosts = postsData.posts;
+          setPosts(fetchedPosts);
         }
+
+        // Update cache for next time - limit to first 10 posts to save space
+        safeStorage.setItem('hidayah_community_cache', JSON.stringify({
+          posts: fetchedPosts.slice(0, 10),
+          userName: uName,
+          userId: userId,
+          timestamp: Date.now()
+        }));
+
       } catch (e) {
         console.error("Community page fetch error:", e);
       } finally {
@@ -82,8 +98,14 @@ function CommunityContent() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-hidayah-primary)]">
-      <div className="flex-1 mobile-scroll-container px-4 sm:px-6 pt-0 pb-[120px] custom-scrollbar max-w-2xl mx-auto w-full">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="min-h-screen flex flex-col bg-[var(--color-hidayah-primary)]"
+    >
+      <div className="flex-1 px-4 sm:px-6 pt-0 pb-[120px] custom-scrollbar max-w-2xl mx-auto w-full">
         <CommunityFeed 
           initialPosts={posts} 
           userName={userName} 
@@ -92,7 +114,7 @@ function CommunityContent() {
           currentMood={currentMood}
         />
       </div>
-    </div>
+    </motion.div>
   );
 }
 

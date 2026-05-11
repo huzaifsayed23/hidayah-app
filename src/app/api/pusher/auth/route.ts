@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+
 
 
 import { NextResponse } from 'next/server';
@@ -10,8 +10,15 @@ import User from '@/models/User';
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-    const token = cookieStore.get('hidayah_token')?.value;
+    const authHeader = req.headers.get('Authorization');
+    let token = null;
+
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    } else {
+      const cookieStore = (await cookies().catch(() => null));
+      token = cookieStore?.get('hidayah_token')?.value;
+    }
 
     if (!token) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

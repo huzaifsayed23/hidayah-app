@@ -1,243 +1,235 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
-import { HIDAYAH_API_URL, hidayahFetch } from '@/lib/api';
+import { X, Loader2, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Chapter, hidayahFetch, getVersesByPage, getChapters, getVersesByJuz } from '@/lib/api';
+import { safeStorage } from '@/lib/storage';
 
-function toArabicIndic(num: number): string {
-  const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  return num.toString().split('').map((c) => digits[parseInt(c)]).join('');
+function toArabicIndic(num: number | string): string {
+  const digits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+  return num.toString().split("").map((c) => digits[parseInt(c)]).join("");
 }
 
-export default function QuranReaderClient() {
-  const params = useParams();
-  const pageNum = parseInt(params?.page as string);
-
+export default function QuranReaderClient({ initialPage, juzNumber }: { initialPage: number, juzNumber: number }) {
+  const router = useRouter();
   const [verses, setVerses] = useState<any[]>([]);
-  const [chapters, setChapters] = useState<any[]>([]);
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Ref for double-click tracking to prevent state reset issues
-  const lastClickRef = useRef<{ [key: string]: number }>({});
+  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const pageRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
-    if (!pageNum || isNaN(pageNum)) return;
+    // Save last read progress
+    safeStorage.setItem('hidayah_last_read_page', initialPage.toString());
+    safeStorage.setItem('hidayah_last_read_juz', juzNumber.toString());
 
-    const load = async () => {
+    async function loadData() {
       setIsLoading(true);
       try {
-        const [vRes, cRes] = await Promise.all([
-          fetch(`https://api.qurancdn.com/api/qdc/verses/by_page/${pageNum}?words=false&translations=131&per_page=50&fields=text_indopak,text_uthmani`),
-          fetch('https://api.qurancdn.com/api/qdc/chapters?language=en'),
-        ]);
-        const vData = await vRes.json();
-        const cData = await cRes.json();
-        setVerses(vData.verses || []);
-        setChapters(cData.chapters || []);
+        const juzVerses = await getVersesByJuz(juzNumber);
+        setVerses(juzVerses || []);
 
-        // Load bookmarks from API
-        try {
-          const bRes = await hidayahFetch('/api/users/quran/bookmarks');
-          if (bRes.ok) {
-            const bData = await bRes.json();
-            const apiBookmarks = (bData.bookmarks || []).map((b: any) => b.verseKey);
-            
-            // Merge with localStorage bookmarks
-            const localSaved = JSON.parse(localStorage.getItem('hidayah_local_bookmarks') || '[]');
-            const merged = Array.from(new Set([...apiBookmarks, ...localSaved]));
-            setBookmarks(merged);
-          }
-        } catch (_) {
-          // Fallback to localStorage only if API fails
-          const localSaved = JSON.parse(localStorage.getItem('hidayah_local_bookmarks') || '[]');
-          setBookmarks(localSaved);
+        const chaptersData = await getChapters();
+        setChapters(chaptersData || []);
+
+        const token = safeStorage.getItem('hidayah_token');
+        let userId = 'guest';
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            userId = payload.userId || 'guest';
+          } catch (e) {}
         }
-      } catch (e) {
-        console.error('Quran load error:', e);
+        
+        const storageKey = `hidayah_bookmarks_${userId}`;
+        const localBookmarks = JSON.parse(safeStorage.getItem(storageKey) || '[]');
+        
+        try {
+          const bookmarksRes = await hidayahFetch('/api/users/quran/bookmarks');
+          if (bookmarksRes.ok) {
+            const bData = await bookmarksRes.json();
+            const apiKeys = bData.bookmarks?.map((b: any) => b.verseKey) || [];
+            setBookmarks(apiKeys);
+            safeStorage.setItem(storageKey, JSON.stringify(apiKeys));
+          } else {
+            setBookmarks(localBookmarks);
+          }
+        } catch (e) {
+          setBookmarks(localBookmarks);
+        }
+
+      } catch (error) {
+        console.error("Error loading Quran Juz:", error);
       } finally {
         setIsLoading(false);
       }
-    };
-
-    const updateLastRead = async () => {
-      try {
-        await hidayahFetch(`${HIDAYAH_API_URL}/api/users/profile`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lastReadPage: pageNum }),
-        });
-      } catch (e) {}
-    };
-
-    if (pageNum) {
-      load();
-      updateLastRead();
     }
-  }, [pageNum]);
+    loadData();
+  }, [juzNumber]);
 
-  if (isNaN(pageNum) || pageNum < 1 || pageNum > 604) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg opacity-50">Invalid Page</p>
-      </div>
-    );
-  }
-
-  const chapterIds = Array.from(new Set(verses.map((v) => parseInt(v.verse_key?.split(':')[0]))));
-  const pageChapters = chapterIds.map((id) => chapters.find((c: any) => c.id === id));
-  const primaryChapter = pageChapters[0] as any;
-  const juzNumber = verses.length > 0 ? verses[0].juz_number : '';
-
-  const toggleBookmark = async (verseKey: string) => {
-    try {
-      const isBookmarked = bookmarks.includes(verseKey);
-      
-      // Update local state and localStorage immediately (optimistic)
-      const newBookmarks = isBookmarked 
-        ? bookmarks.filter(k => k !== verseKey) 
-        : [...bookmarks, verseKey];
-      
-      setBookmarks(newBookmarks);
-      localStorage.setItem('hidayah_local_bookmarks', JSON.stringify(newBookmarks));
-      
-      if (!isBookmarked) {
-        localStorage.setItem('hidayah_last_marked_verse', verseKey);
-        localStorage.setItem('hidayah_last_marked_page', pageNum.toString());
+  // Scroll to initial page when data is loaded
+  useEffect(() => {
+    if (!isLoading && verses.length > 0) {
+      const targetRef = pageRefs.current[initialPage.toString()];
+      if (targetRef) {
+        setTimeout(() => {
+          targetRef.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
       }
+    }
+  }, [isLoading, initialPage, verses.length]);
 
-      // Prepare bookmark object for server
-      const [chapterId, verseNumber] = verseKey.split(':').map(Number);
-      const bookmarkData = {
-        chapterId,
-        verseNumber,
-        pageNumber: pageNum,
-        verseKey,
-        addedAt: new Date().toISOString()
-      };
+  const toggleBookmark = async (verseKey: string, pNum: number) => {
+    const isBookmarked = bookmarks.includes(verseKey);
+    const newBookmarks = isBookmarked ? bookmarks.filter(k => k !== verseKey) : [...bookmarks, verseKey];
+    
+    const token = safeStorage.getItem('hidayah_token');
+    let userId = 'guest';
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        userId = payload.userId || 'guest';
+      } catch (e) {}
+    }
+    const storageKey = `hidayah_bookmarks_${userId}`;
 
-      // Sync with API using the correct local path
-      await hidayahFetch('/api/users/quran/bookmarks', {
+    // Optimistic update
+    setBookmarks(newBookmarks);
+    safeStorage.setItem(storageKey, JSON.stringify(newBookmarks));
+
+    try {
+      // Backend POST handles the toggle internally
+      const res = await hidayahFetch('/api/users/quran/bookmarks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bookmarkData),
+        body: JSON.stringify({ 
+          verseKey,
+          pageNumber: pNum 
+        })
       });
-    } catch (e) {
-      console.error(e);
+      
+      if (!res.ok) {
+        // Revert on error
+        setBookmarks(bookmarks);
+        safeStorage.setItem(storageKey, JSON.stringify(bookmarks));
+      }
+    } catch (err) {
+      console.warn("API bookmark failed", err);
+      // Revert on error
+      setBookmarks(bookmarks);
+      safeStorage.setItem(storageKey, JSON.stringify(bookmarks));
     }
   };
 
-  const handleVerseClick = (verseKey: string) => {
-    const now = Date.now();
-    const lastClick = lastClickRef.current[verseKey] || 0;
-    if (now - lastClick < 300) {
-      toggleBookmark(verseKey);
-      lastClickRef.current[verseKey] = 0; // Reset
-    } else {
-      lastClickRef.current[verseKey] = now;
-    }
+  const currentChapter = (verseKey: string) => {
+    const chapterId = parseInt(verseKey.split(':')[0]);
+    return chapters.find(c => c.id === chapterId);
   };
+
+  // Group verses by page_number
+  const pages = verses.reduce((acc: any, verse: any) => {
+    const pageNum = verse.page_number;
+    if (!acc[pageNum]) acc[pageNum] = [];
+    acc[pageNum].push(verse);
+    return acc;
+  }, {});
 
   return (
-    <main className="min-h-screen bg-hidayah-primary flex flex-col items-center p-2 sm:p-4 pb-32 overflow-x-hidden">
-      <div className="w-full max-w-[650px] flex items-center justify-between mb-4 text-hidayah-dark/60 px-4">
-        <Link href="/quran" className="p-2 hover:text-hidayah-gold transition-colors">
-          <X className="w-6 h-6" />
-        </Link>
-        <div className="text-sm tracking-widest uppercase font-medium">Juz {juzNumber}</div>
+    <main className="min-h-screen bg-hidayah-primary flex flex-col items-center p-2 sm:p-4 pb-32">
+      <div className="w-full max-w-4xl flex items-center justify-between mb-4 px-2">
+        <Link href="/quran" className="p-2"><X className="w-6 h-6 text-hidayah-dark/40" /></Link>
+        <div className="text-[9px] font-bold tracking-[0.2em] uppercase text-hidayah-gold bg-hidayah-secondary/50 px-4 py-1.5 rounded-full border border-hidayah-gold/10">
+          Juz {juzNumber} • Mushaf Mode
+        </div>
         <div className="w-10" />
       </div>
 
-      <div className="w-full max-w-[680px] bg-[#fbf8f1] rounded-3xl shadow-2xl shadow-hidayah-dark/5 border-2 border-hidayah-border/30 overflow-hidden relative flex flex-col">
-        <div className="px-6 py-6 flex justify-between items-center border-b border-hidayah-border/20 bg-hidayah-secondary/30">
-          <div className="text-hidayah-gold font-arabic text-2xl">{primaryChapter?.name_arabic}</div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-hidayah-dark/50">{primaryChapter?.name_simple}</div>
+      {isLoading ? (
+        <div className="py-40 flex flex-col items-center justify-center gap-6">
+          <Loader2 className="w-10 h-10 animate-spin text-hidayah-gold" />
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40">Opening the Mushaf...</p>
         </div>
-
-        <div className="p-1 sm:p-2 flex-grow flex flex-col justify-center" dir="rtl">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-hidayah-gold" />
-            </div>
-          ) : (
-            <div
-              className="text-[#2D241E] font-arabic break-words mushaf-layout"
-              style={{ 
-                fontSize: '2.0rem',
-                lineHeight: '1.95',
-                wordSpacing: '0.1em'
-              }}
+      ) : (
+        <div className="w-full max-w-3xl space-y-6">
+          {Object.keys(pages).map((pageNum: string) => (
+            <div 
+              key={pageNum} 
+              ref={(el) => { pageRefs.current[pageNum] = el; }}
+              className="bg-[#fbf8f1] rounded-[32px] shadow-lg border border-hidayah-border/10 overflow-hidden relative"
             >
-              {verses.map((verse) => {
-                const verseNum = parseInt(verse.verse_key?.split(':')[1]);
-                const chapterId = parseInt(verse.verse_key?.split(':')[0]);
-                const isFirstVerse = verseNum === 1;
-                const isBookmarked = bookmarks.includes(verse.verse_key);
-                const arabicText = verse.text_indopak || verse.text_uthmani || verse.text_simple;
+              {/* Page Header */}
+              <div className="px-10 py-3 border-b border-hidayah-border/5 flex justify-between items-center bg-hidayah-secondary/20">
+                 <span className="text-[9px] font-bold text-hidayah-dark/30 uppercase tracking-widest">Page {pageNum}</span>
+                 <span className="text-[9px] font-bold text-hidayah-gold uppercase tracking-widest">Juz {juzNumber}</span>
+              </div>
 
-                return (
-                  <React.Fragment key={verse.id}>
-                    {isFirstVerse && chapterId !== 1 && chapterId !== 9 && (
-                      <div className="my-2 text-center block w-full text-hidayah-gold font-arabic text-3xl leading-tight opacity-90">
-                        بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ
-                      </div>
-                    )}
-                    <span
-                      className={`group cursor-pointer transition-all duration-300 inline relative ${isBookmarked ? 'text-hidayah-gold' : 'hover:text-hidayah-gold/50'}`}
-                      onClick={() => handleVerseClick(verse.verse_key)}
-                    >
-                      {arabicText}
-                      <span className="inline-flex items-center justify-center mx-1.5 relative select-none translate-y-1">
-                        {/* Compact ornament for Indo-Pak V2 script */}
-                        <div className="w-6 h-6 rounded-full border border-hidayah-gold/40 flex items-center justify-center bg-hidayah-gold/5 relative">
-                          <span className="text-[9px] font-bold text-[#2D2A26] font-sans leading-none">
-                            {toArabicIndic(verseNum)}
-                          </span>
-                        </div>
-                        {isBookmarked && (
-                          <span className="absolute -top-4 -right-1 text-hidayah-gold animate-in fade-in zoom-in duration-300 z-10">
-                            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                            </svg>
-                          </span>
+              <div className="p-4 sm:p-8 lg:p-10">
+                <div 
+                  className="mushaf-layout font-arabic text-[22px] sm:text-[36px] text-center leading-[1.15] sm:leading-[1.2] tracking-tight antialiased" 
+                  dir="rtl"
+                  style={{ wordSpacing: '-0.08em', letterSpacing: '-0.02em' }}
+                >
+                  {pages[pageNum].map((verse: any, idx: number) => {
+                    const isBookmarked = bookmarks.includes(verse.verse_key);
+                    const isNewChapter = verse.verse_key.split(':')[1] === "1";
+                    const chapter = isNewChapter ? currentChapter(verse.verse_key) : null;
+
+                    return (
+                      <React.Fragment key={verse.id || idx}>
+                        {isNewChapter && chapter && (
+                          <div className="w-full flex flex-col items-center my-4 py-3 border-y border-hidayah-border/10 bg-hidayah-secondary/5 rounded-2xl" dir="ltr">
+                            <div className="text-lg font-arabic text-hidayah-gold mb-0.5">{chapter.name_arabic}</div>
+                            <div className="text-[7px] font-bold uppercase tracking-[0.3em] text-hidayah-dark opacity-20">{chapter.name_simple}</div>
+                          </div>
                         )}
-                      </span>
-                    </span>
-                  </React.Fragment>
-                );
-              })}
+                        
+                        <span className="relative group mx-0.5 inline">
+                          <span 
+                            className={`transition-colors duration-500 hover:text-hidayah-gold ${isBookmarked ? 'text-hidayah-gold' : 'text-hidayah-dark'}`}
+                          >
+                            {verse.text_indopak}
+                          </span>
+                          <span 
+                            onClick={() => toggleBookmark(verse.verse_key, parseInt(pageNum))}
+                            className="relative inline-flex items-center cursor-pointer select-none px-0.5"
+                          >
+                            <span className="text-hidayah-gold/60 mx-1 font-arabic text-[20px] sm:text-[24px]">
+                              ﴾{toArabicIndic(verse.verse_key.split(':')[1])}﴿
+                            </span>
+                            {isBookmarked && (
+                              <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center animate-in slide-in-from-top-2 duration-500 pointer-events-none">
+                                <Bookmark className="w-4 h-4 text-hidayah-gold fill-hidayah-gold" />
+                                <div className="w-[2px] h-3 bg-hidayah-gold/50"></div>
+                              </div>
+                            )}
+                          </span>
+                        </span>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          )}
+          ))}
+
+          {/* Juz Navigation */}
+          <div className="flex justify-between gap-4 py-8">
+            <Link 
+              href={juzNumber > 1 ? `/quran/read/${[1, 22, 42, 62, 82, 102, 122, 142, 162, 182, 202, 222, 242, 262, 282, 302, 322, 342, 362, 382, 402, 422, 442, 462, 482, 502, 522, 542, 562, 582][juzNumber - 2]}` : '#'}
+              className={`flex-1 py-5 bg-hidayah-secondary rounded-[32px] text-center text-[10px] font-bold uppercase tracking-widest border border-hidayah-border/30 transition-all active:scale-95 ${juzNumber <= 1 ? 'opacity-20 pointer-events-none' : 'hover:bg-hidayah-gold hover:text-white hover:border-hidayah-gold shadow-sm'}`}
+            >
+              Previous Juz
+            </Link>
+            <Link 
+              href={juzNumber < 30 ? `/quran/read/${[1, 22, 42, 62, 82, 102, 122, 142, 162, 182, 202, 222, 242, 262, 282, 302, 322, 342, 362, 382, 402, 422, 442, 462, 482, 502, 522, 542, 562, 582][juzNumber]}` : '#'}
+              className={`flex-1 py-5 bg-hidayah-dark text-white rounded-[32px] text-center text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 ${juzNumber >= 30 ? 'opacity-20 pointer-events-none' : 'hover:bg-hidayah-gold shadow-md'}`}
+            >
+              Next Juz
+            </Link>
+          </div>
         </div>
-
-        <div className="px-6 py-3 border-t border-hidayah-border/20 text-center bg-hidayah-secondary/30">
-          <span className="text-[#2D241E]/50 font-arabic text-lg">{toArabicIndic(pageNum)}</span>
-        </div>
-      </div>
-
-      <div className="w-full max-w-[600px] flex items-center justify-between mt-8">
-        {pageNum < 604 ? (
-          <Link
-            href={`/quran/read/${pageNum + 1}`}
-            className="flex items-center gap-2 px-6 py-3 rounded-full bg-hidayah-secondary hover:bg-hidayah-gold hover:text-white transition-all duration-300 border border-hidayah-border/50 text-hidayah-dark group"
-          >
-            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="font-medium tracking-wider text-sm uppercase">Next Page</span>
-          </Link>
-        ) : <div />}
-
-        {pageNum > 1 ? (
-          <Link
-            href={`/quran/read/${pageNum - 1}`}
-            className="flex items-center gap-2 px-6 py-3 rounded-full bg-hidayah-secondary hover:bg-hidayah-gold hover:text-white transition-all duration-300 border border-hidayah-border/50 text-hidayah-dark group"
-          >
-            <span className="font-medium tracking-wider text-sm uppercase">Prev Page</span>
-            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </Link>
-        ) : <div />}
-      </div>
+      )}
     </main>
   );
 }

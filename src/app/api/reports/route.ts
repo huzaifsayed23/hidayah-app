@@ -1,10 +1,11 @@
-export const dynamic = 'force-dynamic';
+
 
 
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Report from '@/models/Report';
 import Post from '@/models/Post';
+import CircleMessage from '@/models/CircleMessage';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
@@ -25,9 +26,9 @@ export async function POST(req: Request) {
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-    const { postId, reportedUserId, reason, details } = await req.json();
-    if (!reason || (!postId && !reportedUserId)) {
-      return NextResponse.json({ message: 'Target (Post or User) and reason are required' }, { status: 400 });
+    const { postId, messageId, reportedUserId, reason, details } = await req.json();
+    if (!reason || (!postId && !messageId && !reportedUserId)) {
+      return NextResponse.json({ message: 'Target (Post, Message or User) and reason are required' }, { status: 400 });
     }
 
     await dbConnect();
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
       await Report.create({
         reporterId: user.userId,
         postId,
+        messageId,
         reportedUserId,
         reason,
         details
@@ -71,13 +73,14 @@ export async function GET(req: Request) {
   try {
     const user = await getAuthUser();
     // Admin check: you might want to restrict this to specific emails or roles
-    const isAdmin = user?.email === 'huzaifsayed454@gmail.com'; 
+    const isAdmin = user?.email?.toLowerCase() === 'huzaifsayed454@gmail.com'; 
     if (!isAdmin) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     await dbConnect();
 
     const reports = await Report.find({ status: 'pending' })
       .populate('postId')
+      .populate('messageId')
       .populate('reporterId', 'username email')
       .populate('reportedUserId', 'username email')
       .sort({ createdAt: -1 });

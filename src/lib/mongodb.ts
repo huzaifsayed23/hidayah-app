@@ -21,6 +21,10 @@ if (!cached) {
 
 async function dbConnect() {
   if (!MONGODB_URI) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('MONGODB_URI is missing. This is expected during the build phase but will fail at runtime.');
+      return null;
+    }
     throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
   }
 

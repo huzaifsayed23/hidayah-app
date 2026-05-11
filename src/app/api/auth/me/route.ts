@@ -1,69 +1,54 @@
-export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
+import { getAuthUser } from '@/lib/auth';
 
-
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+    },
+  });
+}
 
 export async function GET(req: Request) {
   try {
-    let token = null;
-    try {
-      // Try cookie first
-      const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-      token = cookieStore.get('hidayah_token')?.value;
+    const userSession = await getAuthUser();
 
-      // Fallback: try Authorization Bearer header
-      if (!token) {
-        const authHeader = req.headers.get('Authorization');
-        if (authHeader?.startsWith('Bearer ')) {
-          token = authHeader.slice(7);
-        }
-      }
-    } catch (e) {
-      // During static export, cookies() might throw.
+    if (!userSession) {
+      return NextResponse.json({ authenticated: false, message: 'Unauthorized' }, { status: 401 });
     }
-
-    if (!token) {
-      return NextResponse.json({ authenticated: false }, { status: 401 });
-    }
-
-
-
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    const decoded: any = jwt.verify(token, secret);
-
-
 
     await dbConnect();
     
-    // Emergency cleanup for Guest/Invalid accounts (runs on admin or periodic checks)
-    // Only triggered when a valid user checks their status to keep DB clean
-    if (Math.random() < 0.1) { // 10% chance to run cleanup on check-ins
-       await User.deleteMany({ 
-         $or: [
-           { username: { $regex: /Guest/i } },
-           { email: { $not: { $regex: /@/ } } },
-           { password: { $exists: false } }
-         ]
-       });
-    }
-
-    const user = await User.findById(decoded.userId).select('acceptedTerms');
+    const user = await User.findById(userSession.userId).select('username email acceptedTerms');
     
     if (!user) {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
+    // Auto-fix for admin username if needed
+    if (user.email?.toLowerCase() === 'huzaifsayed454@gmail.com' && user.username !== 'HuzaifSayed') {
+      user.username = 'HuzaifSayed';
+      await user.save();
+    } else if (!user.username) {
+      user.username = user.email ? user.email.split('@')[0] : 'User' + Math.floor(Math.random() * 1000);
+      await user.save();
+    }
+
     return NextResponse.json({ 
       authenticated: true,
-      id: decoded.userId,
-      username: decoded.username,
-      email: decoded.email,
+      id: user._id,
+      username: user.username,
+      email: user.email,
       acceptedTerms: user.acceptedTerms || false,
-      isAdmin: decoded.email === 'huzaifsayed454@gmail.com'
+      isAdmin: ['huzaifsayed454@gmail.com', 'huzaifsayed23@gmail.com'].includes(user.email?.toLowerCase())
     }, { status: 200 });
 
   } catch (error) {

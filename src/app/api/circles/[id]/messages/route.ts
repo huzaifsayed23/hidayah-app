@@ -1,5 +1,4 @@
-export const dynamic = 'force-dynamic';
-]; }
+
 
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
@@ -12,26 +11,41 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
 async function getAuthUser(req: Request) {
-  let token = null;
   try {
-    const cookieStore = (await cookies().catch(() => null));
-    token = cookieStore?.get('hidayah_token')?.value;
-  } catch (e) {}
+    let token = null;
+    
+    // 1. Try Cookies
+    try {
+      const cookieStore = await cookies();
+      token = cookieStore.get('hidayah_token')?.value;
+    } catch (e) {}
 
-  if (!token) {
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7);
+    // 2. Try Authorization Header
+    if (!token) {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.slice(7);
+      }
     }
-  }
 
-  if (!token) return null;
-  try {
+    if (!token) return null;
+
     const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
     return jwt.verify(token, secret) as any;
-  } catch(e) {
+  } catch (e) {
     return null;
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+    },
+  });
 }
 
 export async function GET(
@@ -46,7 +60,7 @@ export async function GET(
       // Ignore during build
     }
 
-    if (!user) return NextResponse.json({ messages: [] });
+    if (!user) return NextResponse.json({ messages: [] }, { headers: { 'Access-Control-Allow-Origin': '*' } });
 
     const { id } = await params;
     await dbConnect();
@@ -54,16 +68,25 @@ export async function GET(
     // Resolve circleId if it's a slug or title
     let circleId = id;
     if (!mongoose.isValidObjectId(id)) {
+      await dbConnect();
       let circle = await Circle.findOne({ slug: id }).select('_id');
       if (!circle) {
         circle = await Circle.findOne({ title: { $regex: new RegExp(id.replace(/-/g, ' '), 'i') } }).select('_id');
       }
-      if (circle) circleId = circle._id.toString();
+      if (circle) {
+        circleId = circle._id.toString();
+      } else {
+        return NextResponse.json({ messages: [] }, { headers: { 'Access-Control-Allow-Origin': '*' } }); // Or 404
+      }
+    }
+    
+    if (!mongoose.isValidObjectId(circleId)) {
+      return NextResponse.json({ messages: [] }, { headers: { 'Access-Control-Allow-Origin': '*' } });
     }
 
     const messages = await CircleMessage.find({ circleId })
       .sort({ createdAt: 1 })
-      .populate('senderId', 'username profileImage')
+      .populate('senderId', 'username image')
       .populate({
         path: 'replyTo',
         populate: { path: 'senderId', select: 'username' }
@@ -74,13 +97,16 @@ export async function GET(
     const formattedMessages = messages.map((m: any) => ({
       ...m,
       senderName: m.senderId?.username || 'Unknown',
-      senderImage: m.senderId?.profileImage || null,
+      senderImage: m.senderId?.image || null,
     }));
 
-    return NextResponse.json({ messages: formattedMessages });
+    return NextResponse.json({ messages: formattedMessages }, { headers: { 'Access-Control-Allow-Origin': '*' } });
   } catch (error) {
     console.error('Fetch Messages Error:', error);
-    return NextResponse.json({ message: 'Error fetching messages' }, { status: 500 });
+    return NextResponse.json({ message: 'Error fetching messages' }, { 
+      status: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
   }
 }
 
@@ -89,41 +115,89 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await dbConnect();
+    
     const user = await getAuthUser(req);
-    if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    if (!user) {
+      console.warn('Unauthorized message attempt');
+      return NextResponse.json({ message: 'Unauthorized. Please log in again.' }, { 
+        status: 401,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
+    }
 
     const { id } = await params;
     
     // Resolve circleId if it's a slug or title
     let circleId = id;
     if (!mongoose.isValidObjectId(id)) {
-      await dbConnect();
       let circle = await Circle.findOne({ slug: id }).select('_id');
       if (!circle) {
-        circle = await Circle.findOne({ title: { $regex: new RegExp(id.replace(/-/g, ' '), 'i') } }).select('_id');
+        // Try fuzzy match for title if slug fails (case-insensitive)
+        circle = await Circle.findOne({ title: { $regex: new RegExp(`^${id.replace(/-/g, ' ')}$`, 'i') } }).select('_id');
       }
-      if (circle) circleId = circle._id.toString();
+      
+      if (circle) {
+        circleId = circle._id.toString();
+      } else {
+        console.error(`Circle not found for identity: ${id}`);
+        return NextResponse.json({ message: 'Circle not found' }, { 
+          status: 404,
+          headers: { 'Access-Control-Allow-Origin': '*' }
+        });
+      }
     }
     
-    // Use formData for larger payloads (Next.js JSON limit is 1MB)
-    const formData = await req.formData();
-    const text = formData.get('text') as string;
-    const replyToId = formData.get('replyToId') as string;
-    const imageUrl = formData.get('imageUrl') as string;
-    const fileUrl = formData.get('fileUrl') as string;
-    const fileName = formData.get('fileName') as string;
+    // Final validation
+    if (!mongoose.isValidObjectId(circleId)) {
+      return NextResponse.json({ message: 'Invalid circle identity' }, { 
+        status: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+    
+    let text, replyToId, imageUrl, fileUrl, fileName;
+    
+    const contentType = req.headers.get('content-type') || '';
+    try {
+      if (contentType.includes('application/json')) {
+        const data = await req.json();
+        text = data.text;
+        replyToId = data.replyToId;
+        imageUrl = data.imageUrl;
+        fileUrl = data.fileUrl;
+        fileName = data.fileName;
+      } else {
+        const formData = await req.formData();
+        text = formData.get('text') as string;
+        replyToId = formData.get('replyToId') as string;
+        imageUrl = formData.get('imageUrl') as string;
+        fileUrl = formData.get('fileUrl') as string;
+        fileName = formData.get('fileName') as string;
+      }
+    } catch (e: any) {
+      console.error('Request parsing error:', e);
+      return NextResponse.json({ message: 'Failed to parse request data', details: e.message }, { 
+        status: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
+    }
 
     console.log(`Sending message to circle ${circleId} from user ${user.userId}`);
 
-    if (!user || !user.userId) {
-      return NextResponse.json({ message: 'User identity not found in token' }, { status: 401 });
+    if (!user.userId) {
+      return NextResponse.json({ message: 'User identity missing from token' }, { 
+        status: 401,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
     }
 
     if (!text && !imageUrl && !fileUrl) {
-      return NextResponse.json({ message: 'Message content is required (text or attachment)' }, { status: 400 });
+      return NextResponse.json({ message: 'Message content is required' }, { 
+        status: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
     }
-
-    await dbConnect();
 
     const newMessage = await CircleMessage.create({
       circleId: circleId,
@@ -135,20 +209,28 @@ export async function POST(
       replyTo: (replyToId && replyToId !== "") ? replyToId : null,
     });
 
+    // Update circle's last activity
+    await Circle.findByIdAndUpdate(circleId, {
+      lastMessageAt: new Date(),
+      lastMessageText: text || (imageUrl ? "Shared an image" : (fileUrl ? "Shared a file" : ""))
+    }).catch(e => console.error("Circle update error:", e));
+
     const populatedMessage = await CircleMessage.findById(newMessage._id)
-      .populate('senderId', 'username image') // Fixed: User model uses 'image' not 'profileImage'
+      .populate('senderId', 'username image')
       .populate({
         path: 'replyTo',
         populate: { path: 'senderId', select: 'username' }
       })
       .lean();
 
-    if (!populatedMessage) throw new Error("Failed to retrieve created message");
+    if (!populatedMessage) {
+      throw new Error("Failed to retrieve message after creation");
+    }
 
     const formattedMessage = {
       ...populatedMessage,
-      senderName: populatedMessage.senderId?.username || 'Unknown',
-      senderImage: populatedMessage.senderId?.image || null,
+      senderName: (populatedMessage.senderId as any)?.username || 'Unknown',
+      senderImage: (populatedMessage.senderId as any)?.image || null,
     };
 
     // Lightweight Pusher trigger (strip large Base64 strings)
@@ -159,18 +241,25 @@ export async function POST(
     };
 
     try {
+      // Use the resolved circleId for consistent channel names if possible, 
+      // but keep 'id' (slug) for compatibility with existing client subscriptions
       await pusherServer.trigger(`circle-${id}`, 'new-message', pusherMessage);
     } catch (e) {
-      console.error('Pusher Trigger Error:', e);
+      console.error('Pusher Trigger Error (non-fatal):', e);
     }
 
-    return NextResponse.json({ message: formattedMessage }, { status: 201 });
+    return NextResponse.json({ message: formattedMessage }, { 
+      status: 201,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
   } catch (error: any) {
     console.error('CRITICAL SEND MESSAGE ERROR:', error);
     return NextResponse.json({ 
-      message: 'Error sending message', 
+      message: 'Failed to send. Please ensure your connection is stable.', 
       details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
   }
 }
