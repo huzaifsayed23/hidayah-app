@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import QuranReaderClient from './QuranReaderClient';
 
 export function generateStaticParams() {
@@ -28,5 +29,9 @@ export default async function Page({ params }: { params: Promise<{ page: string 
     if (i === JUZ_START_PAGES.length - 1) juzNum = 30;
   }
 
-  return <QuranReaderClient initialPage={pageNum} juzNumber={juzNum} />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-hidayah-primary" />}>
+      <QuranReaderClient initialPage={pageNum} juzNumber={juzNum} />
+    </Suspense>
+  );
 }

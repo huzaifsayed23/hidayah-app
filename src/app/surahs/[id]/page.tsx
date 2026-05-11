@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { getChapters } from "@/lib/api";
 import SurahReaderPage from "./ClientShell";
 
@@ -15,5 +16,9 @@ export async function generateStaticParams() {
 }
 
 export default function Page() {
-  return <SurahReaderPage />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-hidayah-primary" />}>
+      <SurahReaderPage />
+    </Suspense>
+  );
 }

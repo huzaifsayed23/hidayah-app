@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import ClientShell from './ClientShell';
 
 export function generateStaticParams() {
@@ -13,5 +14,13 @@ export function generateStaticParams() {
 }
 
 export default function Page() { 
-  return <ClientShell />; 
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-hidayah-primary flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-hidayah-gold border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    }>
+      <ClientShell />
+    </Suspense>
+  ); 
 }
