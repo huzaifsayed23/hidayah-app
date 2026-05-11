@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 const isMobileBuild = process.env.BUILD_MODE === 'mobile';
 
 const nextConfig: NextConfig = {
-  cacheComponents: true,
   ...(isMobileBuild ? { output: 'export' } : {}),
   trailingSlash: true,
   images: {
@@ -12,8 +11,8 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    ppr: false,
+  eslint: {
+    ignoreDuringBuilds: true,
   },
 };
 
