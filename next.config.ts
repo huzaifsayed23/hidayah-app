@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    ppr: false,
+  },
 };
 
 export default nextConfig;
