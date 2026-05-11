@@ -13,6 +13,7 @@ import { getAuthUser } from '@/lib/auth';
 
 
 export async function GET() {
+  try {
     const decoded = await getAuthUser();
     if (!decoded) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
