@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Report from '@/models/Report';
 import Post from '@/models/Post';
+import CircleMessage from '@/models/CircleMessage';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
@@ -40,6 +41,8 @@ export async function PATCH(
     if (action === 'delete') {
       if (report.postId) {
         await Post.findByIdAndDelete(report.postId);
+      } else if (report.messageId) {
+        await CircleMessage.findByIdAndDelete(report.messageId);
       } else if (report.reportedUserId) {
         // For user reports, 'delete' might mean suspend/ban
         await User.findByIdAndUpdate(report.reportedUserId, { isSuspended: true });
@@ -56,11 +59,13 @@ export async function PATCH(
         }
       }
     } else if (action === 'warn') {
-      // Find target user (either post author or reported user)
       let targetUserId = report.reportedUserId;
       if (!targetUserId && report.postId) {
         const post = await Post.findById(report.postId);
         targetUserId = post?.userId;
+      } else if (!targetUserId && report.messageId) {
+        const message = await CircleMessage.findById(report.messageId);
+        targetUserId = message?.senderId;
       }
 
       if (targetUserId) {
@@ -80,6 +85,9 @@ export async function PATCH(
       if (!targetUserId && report.postId) {
         const post = await Post.findById(report.postId);
         targetUserId = post?.userId;
+      } else if (!targetUserId && report.messageId) {
+        const message = await CircleMessage.findById(report.messageId);
+        targetUserId = message?.senderId;
       }
       if (targetUserId) {
         await User.findByIdAndUpdate(targetUserId, { isSuspended: true });

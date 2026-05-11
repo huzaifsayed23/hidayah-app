@@ -6,6 +6,7 @@ import { X, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface ReportModalProps {
   postId?: string;
+  messageId?: string;
   reportedUserId?: string;
   isOpen: boolean;
   onClose: () => void;
@@ -21,7 +22,7 @@ const REASONS = [
   'Other'
 ];
 
-export default function ReportModal({ postId, reportedUserId, isOpen, onClose, onSuccess }: ReportModalProps) {
+export default function ReportModal({ postId, messageId, reportedUserId, isOpen, onClose, onSuccess }: ReportModalProps) {
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,7 +41,7 @@ export default function ReportModal({ postId, reportedUserId, isOpen, onClose, o
       const res = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId, reportedUserId, reason, details })
+        body: JSON.stringify({ postId, messageId, reportedUserId, reason, details })
       });
 
       const data = await res.json();

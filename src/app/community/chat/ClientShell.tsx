@@ -5,13 +5,14 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { 
   ArrowLeft, Info, Send, Loader2, MoreVertical, Reply, 
   Copy, ShieldAlert, User, Users, Smile, X, Trash2,
-  Paperclip, Plus
+  Paperclip, Plus, CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getPusherClient } from '@/lib/pusher';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import { HIDAYAH_API_URL, hidayahFetch } from '@/lib/api';
 import { safeStorage } from '@/lib/storage';
+import ReportModal from '@/components/community/ReportModal';
 
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -39,6 +40,8 @@ export default function CircleChatPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null); // messageId
   const [contextMenu, setContextMenu] = useState<{ id: string, x: number, y: number } | null>(null);
+  const [reportMessageId, setReportMessageId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -449,6 +452,11 @@ export default function CircleChatPage() {
     setContextMenu({ id: msgId, x: e.clientX, y: e.clientY });
   };
 
+  const handleReportSuccess = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(""), 4000);
+  };
+
   if (isLoading || !id) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
@@ -534,7 +542,43 @@ export default function CircleChatPage() {
               }
               return null;
             })()}
+
+            <button 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                setReportMessageId(contextMenu.id);
+                setContextMenu(null); 
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-[var(--color-hidayah-dark)] hover:bg-[var(--color-hidayah-secondary)] rounded-xl transition-colors text-sm font-bold"
+            >
+              <ShieldAlert className="w-4 h-4 opacity-50" />
+              Report Message
+            </button>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ReportModal 
+        messageId={reportMessageId || undefined}
+        isOpen={!!reportMessageId}
+        onClose={() => setReportMessageId(null)}
+        onSuccess={handleReportSuccess}
+      />
+
+      {/* Success Toast */}
+      <AnimatePresence>
+        {toastMessage && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[110]">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="px-6 py-3 bg-[var(--color-hidayah-dark)] text-white rounded-2xl shadow-2xl flex items-center gap-3 text-sm font-medium border border-white/10"
+            >
+              <CheckCircle2 className="w-4 h-4 text-green-400" />
+              {toastMessage}
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
