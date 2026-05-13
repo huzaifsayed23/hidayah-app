@@ -297,7 +297,17 @@ const FeedCard = memo(({
   };
 
   const handleSave = async () => {
-    if (!effectiveUserId) {
+    // Emergency identity recovery if props are out of sync
+    let activeId = effectiveUserId;
+    if (!activeId && typeof window !== 'undefined') {
+      try {
+        const userJson = JSON.parse(localStorage.getItem('hidayah_user') || '{}');
+        const u = userJson?.user || userJson;
+        activeId = u?._id || u?.id || "";
+      } catch (e) {}
+    }
+
+    if (!activeId) {
       alert('Please sign in to save reflections.');
       return;
     }

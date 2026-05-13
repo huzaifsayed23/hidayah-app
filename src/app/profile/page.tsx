@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { Bookmark, Edit3, ArrowLeft, Medal, Loader2, BookOpen } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import FeedCard from '@/components/community/FeedCard';
@@ -14,21 +15,24 @@ import BottomNav from '@/components/BottomNav';
 import { hidayahFetch } from '@/lib/api';
 import { safeStorage } from '@/lib/storage';
 import MedalIcon from '@/components/ui/MedalIcon';
-import { motion } from 'framer-motion';
 
 function ProfileContent() {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentTab = searchParams.get('tab') || 'posts';
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'posts');
   const [userData, setUserData] = useState<any>(null);
   const [displayPosts, setDisplayPosts] = useState<any[]>([]);
   const [savedHadiths, setSavedHadiths] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPublicView, setIsPublicView] = useState(false);
   const [error, setError] = useState("");
+
   useEffect(() => {
     setMounted(true);
+    const tabFromUrl = searchParams.get('tab') || 'posts';
+    if (tabFromUrl !== activeTab) setActiveTab(tabFromUrl);
+
     const targetUser = searchParams.get('u');
     setIsPublicView(!!targetUser);
 
@@ -53,14 +57,12 @@ function ProfileContent() {
         return;
       }
       
-      // Only show loader if we don't have cache
       if (targetUser || !safeStorage.getItem('hidayah_profile_cache')) {
         setIsLoading(true);
       }
       
       try {
         if (targetUser) {
-          // Public Profile View - Parallelized
           const [profileRes, searchRes] = await Promise.all([
              hidayahFetch(`/api/users/profile/${targetUser}`),
              hidayahFetch(`/api/users/search?q=${targetUser}`)
@@ -85,7 +87,6 @@ function ProfileContent() {
             }
           }
         } else {
-          // My Profile View - Parallelized
           const profileRes = await hidayahFetch('/api/users/profile');
           if (profileRes.ok) {
             const profileData = await profileRes.json();
@@ -93,8 +94,9 @@ function ProfileContent() {
             setSavedHadiths(profileData.user.savedHadiths || []);
             
             let fetchedPosts = [];
-            if (currentTab !== 'achievements' && currentTab !== 'hadiths') {
-              const postsRes = await hidayahFetch(`/api/posts?userId=${profileData.user._id}&tab=${currentTab === 'posts' ? 'posts' : 'saved'}`);
+            // We fetch the current tab's posts if it's not achievements
+            if (tabFromUrl !== 'achievements' && tabFromUrl !== 'hadiths') {
+              const postsRes = await hidayahFetch(`/api/posts?userId=${profileData.user._id}&tab=${tabFromUrl === 'posts' ? 'posts' : 'saved'}`);
               if (postsRes.ok) {
                 const postsData = await postsRes.json();
                 fetchedPosts = postsData.posts;
@@ -102,7 +104,6 @@ function ProfileContent() {
               }
             }
 
-            // Save to cache
             safeStorage.setItem('hidayah_profile_cache', JSON.stringify({
               user: profileData.user,
               posts: fetchedPosts
@@ -117,7 +118,12 @@ function ProfileContent() {
       }
     };
     fetchData();
-  }, [currentTab, router, searchParams]);
+  }, [searchParams, router]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    router.replace(`/profile?tab=${tab}${isPublicView ? `&u=${user.username}` : ''}`, { scroll: false });
+  };
 
   if (error) {
     return (
@@ -128,7 +134,7 @@ function ProfileContent() {
     );
   }
 
-  if (!mounted || isLoading) {
+  if (!mounted || (isLoading && !userData)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
         <Loader2 className="w-8 h-8 animate-spin text-hidayah-gold" />
@@ -193,99 +199,114 @@ function ProfileContent() {
       </div>
 
       <div className="flex border-b border-[var(--color-hidayah-border)]/50 mb-8 overflow-x-auto custom-scrollbar whitespace-nowrap">
-        <Link 
-          href={`/profile?tab=posts${isPublicView ? `&u=${user.username}` : ''}`}
-          className={`flex-1 min-w-[100px] pb-4 text-[10px] sm:text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all ${currentTab === "posts" ? 'text-[var(--color-hidayah-dark)] border-b-2 border-[var(--color-hidayah-gold)]' : 'text-[var(--color-hidayah-dark)] opacity-40 hover:opacity-100'}`}
+        <button 
+          onClick={() => handleTabChange('posts')}
+          className={`flex-1 min-w-[100px] pb-4 text-[10px] sm:text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all ${activeTab === "posts" ? 'text-[var(--color-hidayah-dark)] border-b-2 border-[var(--color-hidayah-gold)]' : 'text-[var(--color-hidayah-dark)] opacity-40 hover:opacity-100'}`}
         >
           <Edit3 className="w-3.5 h-3.5" />
           Reflections
-        </Link>
+        </button>
         {!isPublicView && (
-          <Link 
-            href="/profile?tab=saved"
-            className={`flex-1 min-w-[100px] pb-4 text-[10px] sm:text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all ${currentTab === "saved" ? 'text-[var(--color-hidayah-dark)] border-b-2 border-[var(--color-hidayah-gold)]' : 'text-[var(--color-hidayah-dark)] opacity-40 hover:opacity-100'}`}
+          <button 
+            onClick={() => handleTabChange('saved')}
+            className={`flex-1 min-w-[100px] pb-4 text-[10px] sm:text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all ${activeTab === "saved" ? 'text-[var(--color-hidayah-dark)] border-b-2 border-[var(--color-hidayah-gold)]' : 'text-[var(--color-hidayah-dark)] opacity-40 hover:opacity-100'}`}
           >
             <Bookmark className="w-3.5 h-3.5" />
             Saved
-          </Link>
+          </button>
         )}
-        <Link 
-          href={`/profile?tab=achievements${isPublicView ? `&u=${user.username}` : ''}`}
-          className={`flex-1 min-w-[100px] pb-4 text-[10px] sm:text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all ${currentTab === "achievements" ? 'text-[var(--color-hidayah-dark)] border-b-2 border-[var(--color-hidayah-gold)]' : 'text-[var(--color-hidayah-dark)] opacity-40 hover:opacity-100'}`}
+        <button 
+          onClick={() => handleTabChange('achievements')}
+          className={`flex-1 min-w-[100px] pb-4 text-[10px] sm:text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 transition-all ${activeTab === "achievements" ? 'text-[var(--color-hidayah-dark)] border-b-2 border-[var(--color-hidayah-gold)]' : 'text-[var(--color-hidayah-dark)] opacity-40 hover:opacity-100'}`}
         >
           <Medal className="w-3.5 h-3.5" />
           Badges
-        </Link>
+        </button>
       </div>
 
-      <div className="flex flex-col gap-6 w-full">
-        {currentTab === 'achievements' ? (
-          <div className="bg-[var(--color-hidayah-secondary)]/30 backdrop-blur-md rounded-[48px] p-8 border border-[var(--color-hidayah-border)]/30 shadow-sm">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-2xl bg-hidayah-gold/20 flex items-center justify-center">
-                <Medal className="w-5 h-5 text-hidayah-gold" />
+      <AnimatePresence mode="wait">
+        <motion.div 
+          key={activeTab}
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -10 }}
+          transition={{ duration: 0.2 }}
+          className="flex flex-col gap-6 w-full"
+        >
+          {activeTab === 'achievements' ? (
+            <div className="bg-[var(--color-hidayah-secondary)]/30 backdrop-blur-md rounded-[48px] p-8 border border-[var(--color-hidayah-border)]/30 shadow-sm">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 rounded-2xl bg-hidayah-gold/20 flex items-center justify-center">
+                  <Medal className="w-5 h-5 text-hidayah-gold" />
+                </div>
+                <h2 className="text-xl font-serif font-bold text-[var(--color-hidayah-dark)]">Spiritual Milestones</h2>
               </div>
-              <h2 className="text-xl font-serif font-bold text-[var(--color-hidayah-dark)]">Spiritual Milestones</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {BADGES.map((badge, index) => {
-                const isUnlocked = unlockedBadges.includes(badge.id);
-                return (
-                  <div key={badge.id} className={`flex items-center gap-4 p-4 rounded-[32px] border transition-all ${isUnlocked ? 'bg-[var(--color-hidayah-primary)] border-hidayah-gold/30 shadow-sm' : 'opacity-40 grayscale bg-transparent'}`}>
-                    <MedalIcon 
-                      level={badge.levelRequired} 
-                      isUnlocked={isUnlocked} 
-                      icon={badge.icon}
-                      size="sm"
-                    />
-                    <div>
-                      <div className="text-[9px] font-bold text-hidayah-gold uppercase">{badge.levelRequired === 6 ? 'Mushkil' : `Level ${badge.levelRequired}`}</div>
-                      <div className="font-serif font-bold text-sm">{badge.name}</div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {BADGES.map((badge, index) => {
+                  const isUnlocked = unlockedBadges.includes(badge.id);
+                  return (
+                    <div key={badge.id} className={`flex items-center gap-4 p-4 rounded-[32px] border transition-all ${isUnlocked ? 'bg-[var(--color-hidayah-primary)] border-hidayah-gold/30 shadow-sm' : 'opacity-40 grayscale bg-transparent'}`}>
+                      <MedalIcon 
+                        level={badge.levelRequired} 
+                        isUnlocked={isUnlocked} 
+                        icon={badge.icon}
+                        size="sm"
+                      />
+                      <div>
+                        <div className="text-[9px] font-bold text-hidayah-gold uppercase">{badge.levelRequired === 6 ? 'Mushkil' : `Level ${badge.levelRequired}`}</div>
+                        <div className="font-serif font-bold text-sm">{badge.name}</div>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-serif font-bold text-[var(--color-hidayah-dark)]">
-                {isPublicView ? 'Shared Reflections' : (currentTab === 'saved' ? 'Saved Reflections' : 'My Posts')}
-              </h2>
-              <span className="text-xs font-medium text-[var(--color-hidayah-dark)] opacity-50">{displayPosts.length} Reflection{displayPosts.length !== 1 && 's'}</span>
-            </div>
-            
-            {displayPosts.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:gap-6">
-                {displayPosts.map((post: any) => (
-                  <FeedCard 
-                    key={post._id} 
-                    id={post._id}
-                    {...post} 
-                    compact={true} 
-                    currentUserId={currentUserId} 
-                    currentUserName={user?.username}
-                    showDelete={!isPublicView && currentTab === "posts"} 
-                    onDeleteSuccess={(deletedId) => setDisplayPosts(prev => prev.filter(p => p._id !== deletedId))}
-                    onSaveToggle={(postId, isSaved) => {
-                      if (currentTab === 'saved' && !isSaved) {
-                        setDisplayPosts(prev => prev.filter(p => (p._id || p.id)?.toString() !== postId?.toString()));
-                      }
-                    }}
-                  />
-                ))}
+                  );
+                })}
               </div>
-            ) : (
-              <div className="py-20 text-center text-[var(--color-hidayah-dark)]/40 bg-[var(--color-hidayah-secondary)]/50 rounded-[40px] border border-dashed border-[var(--color-hidayah-border)]">
-                <Edit3 className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <p>You haven't posted or saved any reflections yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-serif font-bold text-[var(--color-hidayah-dark)]">
+                  {isPublicView ? 'Shared Reflections' : (activeTab === 'saved' ? 'Saved Reflections' : 'My Posts')}
+                </h2>
+                <span className="text-xs font-medium text-[var(--color-hidayah-dark)] opacity-50">
+                  {isLoading ? '...' : `${displayPosts.length} Reflection${displayPosts.length !== 1 ? 's' : ''}`}
+                </span>
               </div>
-            )}
-          </>
-        )}
-      </div>
+              
+              {isLoading && displayPosts.length === 0 ? (
+                <div className="py-20 flex justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-hidayah-gold opacity-50" />
+                </div>
+              ) : displayPosts.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3 sm:gap-6">
+                  {displayPosts.map((post: any) => (
+                    <FeedCard 
+                      key={post._id} 
+                      id={post._id}
+                      {...post} 
+                      compact={true} 
+                      currentUserId={currentUserId} 
+                      currentUserName={user?.username}
+                      showDelete={!isPublicView && activeTab === "posts"} 
+                      onDeleteSuccess={(deletedId) => setDisplayPosts(prev => prev.filter(p => p._id !== deletedId))}
+                      onSaveToggle={(postId, isSaved) => {
+                        if (activeTab === 'saved' && !isSaved) {
+                          setDisplayPosts(prev => prev.filter(p => (p._id || p.id)?.toString() !== postId?.toString()));
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="py-20 text-center text-[var(--color-hidayah-dark)]/40 bg-[var(--color-hidayah-secondary)]/50 rounded-[40px] border border-dashed border-[var(--color-hidayah-border)]">
+                  <Edit3 className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                  <p>You haven't posted or saved any reflections yet.</p>
+                </div>
+              )}
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </motion.div>
   );
 }
