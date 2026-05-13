@@ -1,19 +1,29 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, Trash2, Flag, CheckCircle2 } from 'lucide-react';
+import { MoreHorizontal, Trash2, Flag, CheckCircle2, Bookmark } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReportModal from './ReportModal';
 
 interface PostMenuProps {
   postId: string;
-  onDelete: () => Promise<void>;
-  isDeleting: boolean;
+  onDelete?: () => Promise<void>;
+  onUnsave?: () => void;
+  isDeleting?: boolean;
+  isSaved?: boolean;
   hasGradient?: boolean;
   showDelete?: boolean;
 }
 
-export default function PostMenu({ postId, onDelete, isDeleting, hasGradient, showDelete = true }: PostMenuProps) {
+export default function PostMenu({ 
+  postId, 
+  onDelete, 
+  onUnsave,
+  isDeleting = false, 
+  isSaved = false,
+  hasGradient, 
+  showDelete = false 
+}: PostMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -30,8 +40,10 @@ export default function PostMenu({ postId, onDelete, isDeleting, hasGradient, sh
   }, []);
 
   const handleDelete = async () => {
-    setIsOpen(false);
-    await onDelete();
+    if (onDelete) {
+      setIsOpen(false);
+      await onDelete();
+    }
   };
 
   const handleReportSuccess = (message: string) => {
@@ -55,14 +67,24 @@ export default function PostMenu({ postId, onDelete, isDeleting, hasGradient, sh
 
       {isOpen && (
         <div className="absolute right-0 mt-1 w-40 bg-white rounded-2xl shadow-xl border border-[var(--color-hidayah-border)]/30 py-1.5 z-50 animate-in fade-in zoom-in duration-150">
-          {showDelete && (
+          {showDelete && onDelete && (
             <button 
-              className="w-full flex items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors text-left font-semibold"
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] text-red-500 hover:bg-red-50 transition-colors text-left font-bold uppercase tracking-wider"
               onClick={handleDelete}
               disabled={isDeleting}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? 'Deleting...' : 'Delete Reflection'}
+            </button>
+          )}
+
+          {isSaved && onUnsave && (
+            <button 
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] text-red-500 hover:bg-red-50 transition-colors text-left font-bold uppercase tracking-wider"
+              onClick={() => { setIsOpen(false); onUnsave(); }}
+            >
+              <Bookmark className="w-3.5 h-3.5" />
+              Unsave from Profile
             </button>
           )}
           

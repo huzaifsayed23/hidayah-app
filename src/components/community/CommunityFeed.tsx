@@ -105,9 +105,9 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
           </div>
           <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-1">
             {userResults.slice(0, 5).map(user => (
-              <Link key={user.id} href={`/profile/${user.username}`} className="flex flex-col items-center shrink-0 gap-1.5 group">
+              <Link key={user.id} href={`/profile?u=${user.username}`} className="flex flex-col items-center shrink-0 gap-1.5 group">
                 <div className="w-11 h-11 rounded-full bg-white border border-[var(--color-hidayah-border)]/20 overflow-hidden flex items-center justify-center font-bold text-xs shadow-sm group-hover:border-[var(--color-hidayah-gold)] transition-colors">
-                   {user.image ? <img src={user.image} className="w-full h-full object-cover" /> : user.username.charAt(0).toUpperCase()}
+                   {user.image ? <img src={user.image} className="w-full h-full object-cover" /> : user.username?.charAt(0).toUpperCase()}
                 </div>
                 <span className="text-[9px] font-bold text-[var(--color-hidayah-dark)] opacity-60 group-hover:opacity-100 transition-opacity truncate w-14 text-center">@{user.username}</span>
               </Link>
@@ -158,12 +158,13 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
           filteredPosts.length > 0 ? (
             <div className="flex flex-col gap-6">
               {filteredPosts.slice(0, 4).map((post: any) => (
-                <FeedCard key={post._id} id={post._id} {...post} currentUserId={currentUserId} />
+                <FeedCard key={post._id} id={post._id} {...post} currentUserId={currentUserId} currentUserName={userName} />
               ))}
               {filteredPosts.length > 4 && (
                 <PacedFeed 
                   posts={filteredPosts.slice(4)} 
                   currentUserId={currentUserId} 
+                  currentUserName={userName}
                 />
               )}
             </div>
@@ -178,7 +179,7 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
   );
 }
 
-function PacedFeed({ posts, currentUserId }: { posts: any[], currentUserId: string }) {
+function PacedFeed({ posts, currentUserId, currentUserName }: { posts: any[], currentUserId: string, currentUserName?: string }) {
   const [chunksToReveal, setChunksToReveal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const observerRef = useRef<HTMLDivElement>(null);
@@ -193,7 +194,7 @@ function PacedFeed({ posts, currentUserId }: { posts: any[], currentUserId: stri
         setTimeout(() => {
           setChunksToReveal(prev => prev + 1);
           setIsLoading(false);
-        }, 1500);
+        }, 600);
       }
     }, { threshold: 0.1 });
 
@@ -207,7 +208,7 @@ function PacedFeed({ posts, currentUserId }: { posts: any[], currentUserId: stri
   return (
     <div className="flex flex-col gap-6">
       {posts.slice(0, chunksToReveal * chunkSize).map((post: any) => (
-        <FeedCard key={post._id} id={post._id} {...post} currentUserId={currentUserId} />
+        <FeedCard key={post._id} id={post._id} {...post} currentUserId={currentUserId} currentUserName={currentUserName} />
       ))}
       {chunksToReveal < totalChunks && (
         <div ref={observerRef} className="py-12 flex flex-col items-center justify-center gap-3">

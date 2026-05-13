@@ -20,7 +20,8 @@ function ProfileContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [userDoc, setUserDoc] = useState<any>(null);
   const [displayPosts, setDisplayPosts] = useState<any[]>([]);
-  const [currentUserId, setCurrentUserId] = useState("");
+   const [currentUserId, setCurrentUserId] = useState("");
+   const [currentUserName, setCurrentUserName] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -32,6 +33,7 @@ function ProfileContent() {
         if (meRes.ok) {
           const meData = await meRes.json();
           setCurrentUserId(meData.id || meData.userId);
+          setCurrentUserName(meData.username);
         }
 
 
@@ -229,6 +231,7 @@ function ProfileContent() {
                     onDeleteSuccess={(deletedId) => setDisplayPosts(prev => prev.filter(p => (p._id || p.id) !== deletedId))} 
                     {...post} 
                     currentUserId={currentUserId} 
+                    currentUserName={currentUserName}
                     compact={true}
                   />
                 ))}

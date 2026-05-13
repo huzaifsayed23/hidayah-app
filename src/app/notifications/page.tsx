@@ -170,7 +170,14 @@ export default function NotificationsPage() {
                       <motion.div 
                         key={notification._id}
                         layout
-                        className={`flex items-center justify-between p-2.5 transition-colors hover:bg-[var(--color-hidayah-secondary)]/30 ${!notification.isRead ? 'bg-[var(--color-hidayah-gold)]/5' : ''}`}
+                        onClick={() => {
+                          if (notification.type === 'circle_message') {
+                            router.push(`/community/chat?id=${notification.circleId || notification.circleTitle}`);
+                          } else if (notification.type === 'circle_invite' && notification.status === 'accepted') {
+                            router.push(`/community/chat?id=${notification.circleId || notification.circleTitle}`);
+                          }
+                        }}
+                        className={`cursor-pointer flex items-center justify-between p-2.5 transition-colors hover:bg-[var(--color-hidayah-secondary)]/60 ${!notification.isRead ? 'bg-[var(--color-hidayah-gold)]/5' : ''}`}
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div className="w-9 h-9 rounded-xl bg-[var(--color-hidayah-secondary)] flex items-center justify-center font-bold text-[var(--color-hidayah-dark)]/60 shrink-0 border border-white text-xs shadow-sm">
@@ -182,9 +189,10 @@ export default function NotificationsPage() {
                               {notification.type === 'like' ? 'liked your reflection.' : 
                                notification.type === 'comment' ? 'commented on your reflection.' :
                                notification.type === 'circle_invite' ? `invitation ${notification.status}.` : 
-                               notification.type === 'circle_request' ? `join request ${notification.status}.` : 'interacted with you.'}
+                               notification.type === 'circle_request' ? `join request ${notification.status}.` : 
+                               notification.type === 'circle_message' ? `sent a message in ${notification.circleTitle}.` : 'interacted with you.'}
                             </p>
-                            {notification.type === 'comment' && notification.commentText && (
+                            {(notification.type === 'comment' || notification.type === 'circle_message') && notification.commentText && (
                               <p className="text-[11px] text-[var(--color-hidayah-dark)]/60 mt-1 line-clamp-1 italic italic">
                                 "{notification.commentText}"
                               </p>

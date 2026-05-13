@@ -1,16 +1,22 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Loader2 } from 'lucide-react';
+import React, { useState, memo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Loader2, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { MOOD_PALETTES, GRADIENT_LIBRARY, generateMeshGradient } from '@/lib/gradients';
 import PostMenu from './PostMenu';
 import HadithCard from './HadithCard';
 import { NatureBackground } from '../NatureBackground';
 import { hidayahFetch } from '@/lib/api';
+import { safeStorage } from '@/lib/storage';
 import { toBlob } from 'html-to-image';
 import { Logo } from '@/components/Logo';
-import { Share2 } from 'lucide-react';
+import { Share2, Link2 } from 'lucide-react';
+import Link from 'next/link';
+import ShareReflectionModal from './ShareReflectionModal';
+import { Share as CapShare } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface FeedCardProps {
   id: string;
@@ -36,6 +42,7 @@ interface FeedCardProps {
   ameens?: string[];
   replies?: any[];
   currentUserId?: string;
+  currentUserName?: string;
   backdropVariant?: number;
   compact?: boolean;
   rightAction?: React.ReactNode;
@@ -48,9 +55,10 @@ interface FeedCardProps {
   textColor?: string | null;
   customBackgroundImage?: string | null;
   onDeleteSuccess?: (id: string) => void;
+  onSaveToggle?: (id: string, isSaved: boolean) => void;
 }
 
-export default function FeedCard({
+const FeedCard = memo(({
   id,
   author: propAuthor,
   authorName,
@@ -64,6 +72,7 @@ export default function FeedCard({
   ameens,
   replies,
   currentUserId,
+  currentUserName,
   backdropVariant,
   compact = false,
   rightAction,
@@ -76,9 +85,32 @@ export default function FeedCard({
   textColor: savedTextColor,
   customBackgroundImage,
   onDeleteSuccess,
-}: FeedCardProps & { authorName?: string }) {
+  onSaveToggle,
+}: FeedCardProps & { authorName?: string }) => {
   const author = propAuthor || authorName || "User";
-  const [isLiked, setIsLiked] = useState(ameens?.includes(currentUserId || "") || false);
+  
+  // Robust user extraction from props or localStorage fallback
+  // This ensures that even if currentUserId prop is missing/delayed, we can still identify the logged-in user
+  const { effectiveUserId, effectiveUserName, effectiveEmail, actualUserFromStorage } = React.useMemo(() => {
+    if (typeof window === 'undefined') return { effectiveUserId: currentUserId || "", effectiveUserName: currentUserName || "", effectiveEmail: "", actualUserFromStorage: null };
+    
+    try {
+      const userJsonStr = localStorage.getItem('hidayah_user');
+      const userJson = userJsonStr ? JSON.parse(userJsonStr) : null;
+      const u = userJson?.user || userJson;
+      
+      return {
+        effectiveUserId: currentUserId || u?._id || u?.id || "",
+        effectiveUserName: currentUserName || u?.username || "",
+        effectiveEmail: u?.email || "",
+        actualUserFromStorage: u
+      };
+    } catch (e) {
+      return { effectiveUserId: currentUserId || "", effectiveUserName: currentUserName || "", effectiveEmail: "", actualUserFromStorage: null };
+    }
+  }, [currentUserId, currentUserName]);
+
+  const [isLiked, setIsLiked] = useState(ameens?.includes(effectiveUserId || "") || false);
   const [likesCount, setLikesCount] = useState(ameenCount || 0);
   const [showReplies, setShowReplies] = useState(false);
   const [replyText, setReplyText] = useState("");
@@ -89,67 +121,117 @@ export default function FeedCard({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showHeart, setShowHeart] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const cardRef = React.useRef<HTMLDivElement>(null);
+  const shareCaptureRef = React.useRef<HTMLDivElement>(null);
+  const [commentMenuId, setCommentMenuId] = useState<string | null>(null);
+  const [isPressingComment, setIsPressingComment] = useState<string | null>(null);
   const router = useRouter();
+  const commentTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const touchStartPos = React.useRef<{ x: number, y: number } | null>(null);
 
-  const handleShare = async () => {
+  const cancelCommentTimer = (e?: React.PointerEvent) => {
+    setIsPressingComment(null);
+    if (commentTimerRef.current) {
+      clearTimeout(commentTimerRef.current);
+      commentTimerRef.current = null;
+    }
+    touchStartPos.current = null;
+  };
+
+  const handleShareClick = () => {
+    setShowShareModal(true);
+  };
+
+  const handleShareToPlatform = async (platform: 'whatsapp' | 'instagram' | 'snapchat') => {
     if (isSharing) return;
     setIsSharing(true);
     
     try {
-      if (!cardRef.current) return;
+      const captureEl = shareCaptureRef.current || cardRef.current;
+      if (!captureEl) return;
       
-      // Capture the card exactly as it looks
-      const blob = await toBlob(cardRef.current, {
+      const { toBlob } = await import('html-to-image');
+      await new Promise(r => setTimeout(r, 800)); // Slightly more time for high-res rendering
+
+      const blob = await toBlob(captureEl, {
         cacheBust: true,
-        pixelRatio: 2,
-        backgroundColor: 'transparent'
+        pixelRatio: 2.5, // High resolution for premium look
+        backgroundColor: '#000000',
       });
 
-      if (!blob) throw new Error("Failed to capture");
+      if (!blob) throw new Error("Capture failed");
 
-      const file = new File([blob], `hidayah_${id}.png`, { type: 'image/png' });
-      
-      const triggerDownload = () => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `hidayah_reflection_${id}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-      };
+      // Mobile Native Sharing (Capacitor)
+      try {
+        const reader = new FileReader();
+        const base64Data = await new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
 
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
+        const fileName = `hidayah_share_${Date.now()}.png`;
+        
+        // Save to temporary cache directory for sharing
+        const savedFile = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+
+        // Use native share sheet (Exactly like Gallery)
+        await CapShare.share({
+          title: 'Hidayah Reflection',
+          text: 'Shared from Hidayah',
+          files: [savedFile.uri],
+        });
+      } catch (capErr) {
+        // Web Fallback if Capacitor plugins aren't available or fail
+        console.warn("Capacitor share failed, trying web share:", capErr);
+        const fileName = `hidayah_reflection_${id.slice(-4)}.png`;
+        const file = new File([blob], fileName, { type: 'image/png' });
+        
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
             title: 'Hidayah Reflection',
           });
-        } catch (shareError) {
-          // If it's a system error (not user cancel), download instead
-          if ((shareError as Error).name !== 'AbortError') {
-            triggerDownload();
-          }
+        } else {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          alert("Reflection saved to downloads. You can now share it to your stories!");
         }
-      } else {
-        triggerDownload();
       }
     } catch (err) {
-      console.error("Critical share failure:", err);
+      console.error("Total share error:", err);
+      alert("Could not share. Please try again.");
     } finally {
       setIsSharing(false);
+      setShowShareModal(false);
     }
   };
 
   React.useEffect(() => {
-    setIsLiked(ameens?.includes(currentUserId || "") || false);
-    setLikesCount(ameenCount || 0);
-    setRepliesList(replies || []);
-    setIsSavedPost(isSaved);
-  }, [ameens, ameenCount, currentUserId, replies, isSaved]);
+    // Only update if currentUserId is set, otherwise it might be a public view
+    // where we don't want to overwrite local states until fresh props arrive
+    if (ameens) setIsLiked(ameens.includes(effectiveUserId || ""));
+    if (ameenCount !== undefined) setLikesCount(ameenCount);
+    if (replies) setRepliesList(replies);
+    if (isSaved !== undefined) setIsSavedPost(isSaved);
+  }, [ameens, ameenCount, effectiveUserId, replies, isSaved]);
+
 
   const handleLike = async () => {
-    if (!currentUserId) return; // Must be logged in
+    if (!effectiveUserId) {
+      alert('Please sign in to like reflections.');
+      return;
+    }
     
     // Optimistic update
     setIsLiked(!isLiked);
@@ -161,6 +243,12 @@ export default function FeedCard({
         const data = await res.json();
         setIsLiked(data.hasLiked);
         setLikesCount(data.ameenCount);
+        
+        // Update local community cache so it sticks if app is closed/reopened
+        safeStorage.updateCommunityCache(id, { 
+          ameens: data.hasLiked ? [...(ameens || []), effectiveUserId] : (ameens || []).filter(u => u !== effectiveUserId),
+          ameenCount: data.ameenCount
+        });
       } else {
         setIsLiked(isLiked);
         setLikesCount(likesCount);
@@ -172,7 +260,7 @@ export default function FeedCard({
   };
 
   const handleDoubleTap = () => {
-    if (!currentUserId) return;
+    if (!effectiveUserId) return;
     if (!isLiked) {
       handleLike();
     }
@@ -185,15 +273,22 @@ export default function FeedCard({
     setIsSubmittingReply(true);
     
     try {
-      const res = await hidayahFetch(`/api/posts/${id}/reply`, {
+      const res = await hidayahFetch(`/api/posts/${id}/reply/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: replyText })
       });
       if (res.ok) {
         const data = await res.json();
-        setRepliesList([...repliesList, data.reply]);
+        const updatedReplies = [...repliesList, data.reply];
+        setRepliesList(updatedReplies);
         setReplyText("");
+        
+        // Update local community cache
+        safeStorage.updateCommunityCache(id, { 
+          replies: updatedReplies,
+          commentCount: updatedReplies.length 
+        });
       }
     } catch (e) {
     } finally {
@@ -202,17 +297,58 @@ export default function FeedCard({
   };
 
   const handleSave = async () => {
-    if (!currentUserId) {
+    if (!effectiveUserId) {
       alert('Please sign in to save reflections.');
       return;
     }
     
-    setIsSavedPost(!isSavedPost);
+    const nextSavedState = !isSavedPost;
+    setIsSavedPost(nextSavedState);
+    
     try {
-      const res = await hidayahFetch(`/api/posts/${id}/save`, { method: 'POST' });
-      if (!res.ok) setIsSavedPost(isSavedPost);
-    } catch {
-      setIsSavedPost(isSavedPost);
+      const res = await hidayahFetch(`/api/posts/${id}/save/`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setIsSavedPost(data.hasSaved);
+        if (onSaveToggle) onSaveToggle(id, data.hasSaved);
+        
+        // Update local community cache so it sticks if app is closed/reopened
+        safeStorage.updateCommunityCache(id, { isSaved: data.hasSaved });
+        
+        // Also update profile cache if it exists
+        safeStorage.updateProfileSaveCache({
+          _id: id,
+          author,
+          authorName,
+          timeAgo,
+          moodTag,
+          content,
+          verse,
+          hadith,
+          ameenCount: likesCount,
+          commentCount: repliesList.length,
+          ameens: isLiked ? [effectiveUserId] : [], // Rough approximation for cache
+          userId,
+          themePalette,
+          authorImage,
+          reflectionThemeId,
+          textColor: savedTextColor,
+          customBackgroundImage
+        }, data.hasSaved);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        setIsSavedPost(!nextSavedState);
+        alert(errorData.message || 'Could not update save status. Please try again.');
+      }
+    } catch (err) {
+      console.error("Save error:", err);
+      setIsSavedPost(!nextSavedState);
+      alert('Connection failed. Please check your internet.');
     }
   };
 
@@ -232,6 +368,32 @@ export default function FeedCard({
     } catch (e) {
       setIsDeleting(false);
       alert('An error occurred');
+    }
+  };
+
+  const handleDeleteComment = async (replyId: string) => {
+    if (!replyId) return;
+    try {
+      // Use explicit trailing slash + fallback param to guarantee compatibility with all environments
+      const res = await hidayahFetch(`/api/posts/${id}/reply/?replyId=${replyId}&action=delete`, {
+        method: 'POST' // Use POST fallback which is most reliable in mobile/web bridges
+      });
+      if (res.ok) {
+        const updatedReplies = repliesList.filter(r => (r._id || r.id) !== replyId);
+        setRepliesList(updatedReplies);
+        
+        // Update local community cache
+        safeStorage.updateCommunityCache(id, { 
+          replies: updatedReplies,
+          commentCount: updatedReplies.length 
+        });
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(`Could not delete comment: ${errorData.message || 'Server Error'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Connection error. Please check your internet.");
     }
   };
 
@@ -270,66 +432,82 @@ export default function FeedCard({
 
   return (
     <div 
-      ref={cardRef}
+      className={`relative group overflow-hidden ${compact ? 'rounded-[32px] flex flex-col aspect-[4/5] sm:aspect-[3/4]' : 'rounded-[48px]'} border border-[var(--color-hidayah-border)]/30 ${hasGradient ? '' : 'bg-[var(--color-hidayah-primary)] shadow-sm hover:shadow-md'} transition-all duration-300 select-none`}
       onDoubleClick={handleDoubleTap}
-      className={`relative group overflow-hidden ${compact ? 'rounded-[32px] flex flex-col aspect-[4/5] sm:aspect-[3/4] p-3.5 sm:p-6' : 'rounded-[48px] p-5 sm:p-8'} border border-[var(--color-hidayah-border)]/30 ${hasGradient ? '' : 'bg-[var(--color-hidayah-primary)] shadow-sm hover:shadow-md'} transition-all duration-300 select-none`}
     >
-      {showHeart && (
-        <div className="absolute inset-0 flex items-center justify-center z-[100] pointer-events-none animate-in fade-in zoom-in-50 duration-300">
-          <Heart className="w-24 h-24 text-white fill-white drop-shadow-2xl opacity-90" />
-        </div>
-      )}
-      {/* Background Layer */}
-      {customBackgroundImage ? (
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-center no-repeat transition-all duration-700"
-          style={{ 
-            backgroundImage: `url(${customBackgroundImage})`,
-            backgroundPosition: 'center center',
-            backgroundSize: 'cover'
-          }}
-        />
-      ) : hasGradient && (
-        <div 
-          className="absolute inset-0 z-0"
-          style={{
-            backgroundImage: currentGradient,
-            backgroundColor: colors[4]
-          }}
-        />
-      )}
-      {/* Readability overlay - balanced for 'middle perfect' fit */}
-      <div className={`absolute inset-0 ${customBackgroundImage ? 'bg-black/35' : 'bg-black/25'} z-[1]`} />
-
-      {/* Content wrapper to stay above gradient */}
-      <div className={`relative z-10 flex flex-col ${compact ? 'gap-3 sm:gap-4' : 'gap-6'}`}>
+      {/* Visual content wrapper for sharing capture */}
+      <div ref={cardRef} className={`relative w-full h-full flex flex-col ${compact ? 'p-3.5 sm:p-6' : 'p-5 sm:p-8'} overflow-hidden rounded-[inherit] bg-[#EBE3D5]`}>
+        {/* Background Layer */}
+        {customBackgroundImage ? (
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center no-repeat transition-all duration-700"
+            style={{ 
+              backgroundImage: `url(${customBackgroundImage})`,
+              backgroundPosition: 'center center',
+              backgroundSize: 'cover'
+            }}
+          />
+        ) : hasGradient && (
+          <div 
+            className="absolute inset-0 z-0"
+            style={{
+              backgroundImage: currentGradient,
+              backgroundColor: colors[4]
+            }}
+          />
+        )}
+        <div className={`absolute inset-0 ${customBackgroundImage ? 'bg-black/35' : 'bg-black/25'} z-[1]`} />
+        
+        {/* The Actual Content (Now in normal flow so the card has height) */}
+        <div className="relative z-10 h-full w-full flex flex-col">
+           {/* showHeart */}
+           {showHeart && (
+             <div className="absolute inset-0 flex items-center justify-center z-[100] pointer-events-none animate-in fade-in zoom-in-50 duration-300">
+               <Heart className="w-24 h-24 text-white fill-white drop-shadow-2xl opacity-90" />
+             </div>
+           )}
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className={`${compact ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-10 h-10 md:w-12 md:h-12'} shrink-0 rounded-full flex items-center justify-center font-bold ${compact ? 'text-sm' : 'text-lg'} ${avatarBg} overflow-hidden`}>
-              {authorImage ? (
-                <img src={authorImage} alt={author || "User"} className="w-full h-full object-cover" />
-              ) : (
-                (author || "User").charAt(0).toUpperCase()
-              )}
-            </div>
-            <div className="flex flex-col">
-              <h3 className={`font-semibold ${compact ? 'text-[11px] sm:text-xs md:text-sm truncate max-w-[70px] sm:max-w-none' : 'text-sm'} ${textColor}`}>{author || "User"}</h3>
-              <span className={`text-[9px] sm:text-[10px] md:text-xs ${textMuted}`}>{timeAgo}</span>
-            </div>
-          </div>
+            <Link href={`/profile?u=${author}`} className="flex items-center gap-2 md:gap-3 group/author">
+              <div className={`${compact ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-10 h-10 md:w-12 md:h-12'} shrink-0 rounded-full flex items-center justify-center font-bold ${compact ? 'text-sm' : 'text-lg'} ${avatarBg} overflow-hidden group-hover/author:border-white transition-all`}>
+                {authorImage ? (
+                  <img src={authorImage} alt={author || "User"} className="w-full h-full object-cover" />
+                ) : (
+                  (author || "User").charAt(0).toUpperCase()
+                )}
+              </div>
+              <div className="flex flex-col">
+                <h3 className={`font-semibold ${compact ? 'text-[11px] sm:text-xs md:text-sm truncate max-w-[70px] sm:max-w-none' : 'text-sm'} ${textColor} group-hover/author:underline transition-all`}>{author || "User"}</h3>
+                <span className={`text-[9px] sm:text-[10px] md:text-xs ${textMuted}`}>{timeAgo}</span>
+              </div>
+            </Link>
           <div className="flex items-center gap-1 sm:gap-2">
             <span className={`px-2 py-0.5 sm:px-3 sm:py-1 md:px-4 md:py-1.5 rounded-full border ${compact ? 'text-[9px] sm:text-[10px] md:text-xs hidden sm:block' : 'text-xs'} font-medium ${tagBg}`}>
               {moodTag}
             </span>
-            <PostMenu 
-              postId={id} 
-              onDelete={handleDelete} 
-              isDeleting={isDeleting} 
-              hasGradient={hasGradient} 
-              showDelete={showDelete && userId === currentUserId}
-            />
-            {rightAction}
+              <PostMenu 
+                postId={id} 
+                onDelete={handleDelete}
+                onUnsave={handleSave}
+                isDeleting={isDeleting}
+                isSaved={isSavedPost}
+                hasGradient={hasGradient}
+                showDelete={showDelete}
+              />
+              {compact && isSavedPost && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSave();
+                  }}
+                  className="bg-red-500/90 backdrop-blur-md border border-white/20 text-white p-2.5 rounded-full shadow-lg active:scale-90 transition-all hover:bg-red-600 group/unsave"
+                  title="Unsave Reflection"
+                >
+                  <Bookmark className="w-4 h-4 fill-current group-hover/unsave:scale-110 transition-transform" />
+                </button>
+              )}
+
+              {rightAction}
           </div>
         </div>
 
@@ -411,7 +589,7 @@ export default function FeedCard({
             <div className="flex-1" />
             
             <button 
-              onClick={handleShare}
+              onClick={handleShareClick}
               disabled={isSharing}
               className={`p-2 rounded-full transition-all active:scale-90 shadow-sm z-20 ${isSharing ? 'animate-pulse' : ''} ${isLightText ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-black/5 text-[var(--color-hidayah-dark)] hover:bg-black/10'}`}
               title="Share to Story"
@@ -420,12 +598,17 @@ export default function FeedCard({
             </button>
             
             <button 
-              onClick={handleSave}
-              className={`p-2 rounded-full transition-all active:scale-90 shadow-sm z-20 ${isSavedPost ? 'bg-[var(--color-hidayah-gold)] text-white' : (isLightText ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-black/5 text-[var(--color-hidayah-dark)] hover:bg-black/10')}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSave();
+              }}
+              className={`p-3 rounded-2xl transition-all active:scale-90 shadow-lg z-30 flex items-center gap-2 ${isSavedPost ? 'bg-red-500 text-white' : (isLightText ? 'bg-white/30 text-white' : 'bg-black/10 text-[var(--color-hidayah-dark)]')}`}
               title={isSavedPost ? 'Unsave reflection' : 'Save reflection'}
             >
-              <Bookmark className={`w-4 h-4 transition-transform hover:scale-125 ${isSavedPost ? 'fill-current' : ''}`} />
+              <Bookmark className={`w-5 h-5 transition-transform hover:scale-110 ${isSavedPost ? 'fill-current' : ''}`} />
+              {isSavedPost && <span className="text-[10px] font-bold uppercase tracking-wider">Saved</span>}
             </button>
+
           </div>
 
           {/* Expanded Replies Section */}
@@ -433,15 +616,49 @@ export default function FeedCard({
             <div className={`mt-4 pt-4 border-t ${borderCol} space-y-4 relative z-30`}>
               {repliesList.length > 0 ? (
                 <div className="space-y-3 pr-2">
-                  {(isRepliesExpanded ? repliesList : repliesList.slice(-1)).map((reply: any, i: number) => (
-                    <div key={i} className={`p-3 rounded-xl ${isLightText ? 'bg-white/10' : 'bg-[var(--color-hidayah-primary)]'} border ${borderCol}`}>
-                      <div className="flex justify-between items-start mb-1">
-                        <span className={`text-xs font-bold ${textColor}`}>{reply.author || "User"}</span>
-                        <span className={`text-[10px] ${textMuted}`}>{new Date(reply.createdAt).toLocaleDateString()}</span>
+                  {(isRepliesExpanded ? repliesList : repliesList.slice(-1)).map((reply: any, i: number) => {
+                    // Robust user extraction from props or localStorage fallback
+                    const loggedInId = effectiveUserId;
+                    const loggedInUsername = (effectiveUserName || "").replace(/^@/, '').trim().toLowerCase();
+                    const loggedInEmail = (effectiveEmail || "").toLowerCase();
+                    
+                    const replyAuthorClean = (reply.author || "").replace(/^@/, '').trim().toLowerCase();
+                    
+                    const isMyComment = loggedInUsername && replyAuthorClean && loggedInUsername === replyAuthorClean;
+                    const isMyPost = userId && loggedInId && userId.toString() === loggedInId.toString();
+                    const isGlobalAdmin = ['huzaifsayed454@gmail.com', 'huzaifsayed23@gmail.com'].includes(loggedInEmail) || (actualUserFromStorage?.isAdmin);
+
+                    const canDelete = isMyComment || isMyPost || isGlobalAdmin;
+
+                    return (
+                      <div 
+                        key={reply._id || i} 
+                        className={`relative p-3 rounded-xl transition-all ${isLightText ? 'bg-white/10' : 'bg-[var(--color-hidayah-secondary)]'} border ${borderCol} select-none overflow-hidden`}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <span className={`text-xs font-bold ${textColor}`}>{reply.author || "User"}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] ${textMuted}`}>{new Date(reply.createdAt).toLocaleDateString()}</span>
+                            {canDelete && (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm("Delete this comment?")) {
+                                    handleDeleteComment(reply._id);
+                                  }
+                                }}
+                                className="p-1 text-red-500 hover:bg-red-50 rounded-md transition-all active:scale-90"
+                                title="Delete comment"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p className={`text-sm ${textColor}`}>{reply.content}</p>
                       </div>
-                      <p className={`text-sm ${textColor}`}>{reply.content}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                   
                   {repliesList.length > 1 && !isRepliesExpanded && (
                     <button 
@@ -484,11 +701,118 @@ export default function FeedCard({
             </div>
           )}
         </div>
-        <div className="mt-4 flex items-center justify-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
+        <div className="mt-auto pt-4 flex items-center justify-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
           <Logo className="w-4 h-4 text-white" showText={false} />
           <span className="text-[8px] font-bold text-white uppercase tracking-[0.2em]">Hidayah</span>
         </div>
       </div>
     </div>
+      {/* End of cardRef visual wrapper */}
+
+      <ShareReflectionModal 
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        onShare={handleShareToPlatform}
+        isProcessing={isSharing}
+      />
+
+      {/* Hidden Capture Template for Social Sharing (Pure Reflection Look) */}
+      <div className="fixed -left-[5000px] top-0 pointer-events-none" aria-hidden="true">
+        <div 
+          ref={shareCaptureRef}
+          className="w-[1080px] flex flex-col p-16 relative overflow-hidden rounded-[80px]"
+          style={{ 
+            fontFamily: 'var(--font-crimson), serif',
+            minHeight: '1350px' // High-resolution 4:5 aspect ratio base
+          }}
+        >
+          {/* Exact Background as seen in App */}
+          {customBackgroundImage ? (
+            <div 
+              className="absolute inset-0 z-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${customBackgroundImage})` }}
+            />
+          ) : (
+            <div 
+              className="absolute inset-0 z-0"
+              style={{
+                backgroundImage: currentGradient,
+                backgroundColor: colors[4]
+              }}
+            />
+          )}
+          <div className={`absolute inset-0 ${customBackgroundImage ? 'bg-black/35' : 'bg-black/25'} z-[1]`} />
+          
+          <div className="relative z-10 w-full h-full flex flex-col">
+            {/* Header (Exact Match to App) */}
+            <div className="flex items-center justify-between mb-12">
+              <div className="flex items-center gap-6">
+                <div className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl bg-white/20 backdrop-blur-md text-white overflow-hidden">
+                  {authorImage ? (
+                    <img src={authorImage} alt={author} className="w-full h-full object-cover" />
+                  ) : (
+                    author.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <h3 className="font-semibold text-3xl text-white">{author}</h3>
+                  <span className="text-xl text-white/70">{timeAgo}</span>
+                </div>
+              </div>
+              <div className="px-8 py-3 rounded-full bg-white/10 border border-white/20 text-2xl font-medium text-white backdrop-blur-md">
+                {moodTag}
+              </div>
+            </div>
+
+            {/* Content (Exact Match to App) */}
+            <div className="space-y-12 mb-12">
+              {verse && (
+                <div className="border-l-4 border-white/50 pl-10 space-y-6">
+                  <p className="font-arabic text-[64px] text-right text-white leading-relaxed" dir="rtl">
+                    {verse.text}
+                  </p>
+                  {verse.translation && (
+                    <p className="text-4xl italic text-white/90 leading-relaxed">
+                      "{verse.translation}"
+                    </p>
+                  )}
+                  <p className="text-2xl font-bold text-white/90 uppercase tracking-widest">
+                    {verse.surah} • Ayah {verse.ayah}
+                  </p>
+                </div>
+              )}
+
+              {hadith && (
+                <div className="bg-white/5 backdrop-blur-sm p-10 rounded-[48px] border border-white/10">
+                   <p className="font-arabic text-5xl text-right text-white/90 mb-6" dir="rtl">{hadith.hadithArabic}</p>
+                   <p className="text-3xl text-white/80 leading-relaxed italic">"{hadith.hadithEnglish}"</p>
+                   <p className="text-xl font-bold text-white/50 uppercase mt-4">{hadith.bookName} • {hadith.hadithNumber}</p>
+                </div>
+              )}
+
+              <p 
+                className="text-[52px] text-white leading-[1.6]" 
+                style={{ 
+                  textShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  fontFamily: 'var(--font-crimson), var(--font-serif)'
+                }}
+              >
+                {content}
+              </p>
+            </div>
+
+            {/* Footer (Pure Watermark) */}
+            <div className="mt-auto pt-16 flex items-center justify-center gap-4 opacity-40">
+              <Logo className="w-10 h-10 text-white" showText={false} />
+              <span className="text-2xl font-bold text-white uppercase tracking-[0.3em]">Hidayah</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
-}
+});
+
+FeedCard.displayName = "FeedCard";
+
+export default FeedCard;

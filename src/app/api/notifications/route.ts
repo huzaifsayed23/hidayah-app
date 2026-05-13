@@ -7,17 +7,9 @@ import Notification from '@/models/Notification';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-async function getAuthUser() {
-  const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
-  const token = cookieStore.get('hidayah_token')?.value;
-  if (!token) return null;
-  try {
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_change_me_in_production';
-    return jwt.verify(token, secret) as any;
-  } catch(e) {
-    return null;
-  }
-}
+import { getAuthUser } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 
 

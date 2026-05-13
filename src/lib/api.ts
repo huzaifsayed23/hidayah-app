@@ -77,6 +77,7 @@ async function universalFetch(url: string, options: RequestInit = {}, retries = 
 
 let authCache: { data: any, timestamp: number } | null = null;
 const responseCache: Record<string, { data: any, timestamp: number }> = {};
+const CACHE_TTL = 30000; // 30 seconds cache for same-session navigation speed
 
 export async function hidayahFetch(url: string, options: RequestInit = {}) {
   const isInternal = url.startsWith('/') || url.startsWith(HIDAYAH_API_URL) || url.includes('vercel.app');
@@ -89,10 +90,44 @@ export async function hidayahFetch(url: string, options: RequestInit = {}) {
     let path = url.replace(HIDAYAH_API_URL, '').replace(PRIMARY_URL, '').replace(FALLBACK_URL, '');
     if (!path.startsWith('/')) path = '/' + path;
     
-    // Add trailing slash for internal API routes to avoid 308 redirects from Next.js/Vercel.
-    // Next.js with trailingSlash: true will 308 redirect any request without a slash.
-    if (!path.endsWith('/') && !path.includes('?') && !path.includes('.')) {
-      path += '/';
+    // Client-side cache check to prevent "hanging" during rapid navigation
+    if (isGet && isWeb) {
+      const cacheKey = path;
+      const now = Date.now();
+      
+      // Special handling for auth/me to make it instant
+      if (path === '/api/auth/me/' || path === '/api/auth/me') {
+        if (authCache && (now - authCache.timestamp < CACHE_TTL)) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(JSON.stringify(authCache!.data)),
+            clone: function() { return this; }
+          } as any;
+        }
+      } else if (responseCache[cacheKey] && (now - responseCache[cacheKey].timestamp < 10000)) {
+        // Cache other GET requests for 10 seconds to smooth out transitions
+        const cached = responseCache[cacheKey];
+        return {
+          ok: true,
+          status: 200,
+          json: async () => JSON.parse(JSON.stringify(cached.data)),
+          clone: function() { return this; }
+        } as any;
+      }
+    }
+
+    // Add trailing slash for internal API routes
+    if (!path.includes('.')) {
+      const queryIndex = path.indexOf('?');
+      if (queryIndex !== -1) {
+        const basePath = path.substring(0, queryIndex);
+        if (!basePath.endsWith('/')) {
+          path = basePath + '/' + path.substring(queryIndex);
+        }
+      } else if (!path.endsWith('/')) {
+        path += '/';
+      }
     }
 
     const headers: Record<string, string> = {
@@ -106,34 +141,39 @@ export async function hidayahFetch(url: string, options: RequestInit = {}) {
       }
     }
 
-
-    // Use HIDAYAH_API_URL which respects process.env.NEXT_PUBLIC_HIDAYAH_API_URL
     const baseUrl = (isLocalhost && !isNative) ? window.location.origin : HIDAYAH_API_URL;
 
     try {
       const res = await universalFetch(`${baseUrl}${path}`, { ...options, headers });
-      if (res.ok) return res;
       
-      // If we are on local dev and got a server error (4xx/5xx), don't fallback to Vercel
-      // because the DB state will be different and it will cause confusion.
+      // Cache successful GET responses
+      if (res.ok && isGet && isWeb) {
+        const cacheKey = path;
+        const clonedRes = res.clone ? res.clone() : res;
+        try {
+          const data = await clonedRes.json();
+          const cacheEntry = { data, timestamp: Date.now() };
+          if (path === '/api/auth/me/' || path === '/api/auth/me') {
+            authCache = cacheEntry;
+          } else {
+            responseCache[cacheKey] = cacheEntry;
+          }
+        } catch (e) {}
+      }
+
+      if (res.ok) return res;
       if (isLocalhost && !isNative) return res;
 
-      // If we used a custom baseUrl and it failed, try the fallback if it's different
       if (baseUrl !== FALLBACK_URL && res.status >= 400) {
         const fbRes = await universalFetch(`${FALLBACK_URL}${path}`, { ...options, headers });
         if (fbRes.ok) return fbRes;
       }
       return res;
     } catch (e) {
-      // Log the primary failure to the console for better debugging
       if (isLocalhost) {
         console.error(`[Hidayah API] Primary Request Failed (${baseUrl}${path}):`, e);
       }
-
-      // If on localhost, don't fallback to remote Vercel to avoid confusing CORS/Auth errors
       if (isLocalhost && !isNative) throw e;
-
-      // If primary fails with an exception (e.g. network down), try fallback
       if (baseUrl !== FALLBACK_URL) {
         return universalFetch(`${FALLBACK_URL}${path}`, { ...options, headers });
       }

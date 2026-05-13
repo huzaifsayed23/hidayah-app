@@ -11,6 +11,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/geolocation": "^8.2.0",
+    "@capacitor/share": "^8.0.1",
     "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",

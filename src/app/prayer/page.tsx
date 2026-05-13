@@ -16,10 +16,20 @@ interface PrayerTimes {
   Isha: string;
 }
 
+const PRESET_CITIES = [
+  { name: "Makkah", lat: 21.4225, lng: 39.8262 },
+  { name: "Mumbai", lat: 19.0760, lng: 72.8777 },
+  { name: "Pune", lat: 18.5204, lng: 73.8567 },
+  { name: "Hyderabad", lat: 17.3850, lng: 78.4867 },
+  { name: "Bangalore", lat: 12.9716, lng: 77.5946 },
+  { name: "Delhi", lat: 28.6139, lng: 77.2090 },
+];
+
 export default function PrayerDetailsPage() {
   const router = useRouter();
   const [times, setTimes] = useState<PrayerTimes | null>(null);
   const [locationName, setLocationName] = useState("Detecting...");
+  const [isDefaultLocation, setIsDefaultLocation] = useState(false);
   const [currentPrayer, setCurrentPrayer] = useState("");
   const [loading, setLoading] = useState(true);
   const [today, setToday] = useState("");
@@ -31,7 +41,7 @@ export default function PrayerDetailsPage() {
     Isha: true,
   });
 
-  const fetchTimes = async (lat: number, lng: number) => {
+  const fetchTimes = async (lat: number, lng: number, isDefault: boolean = false) => {
     try {
       const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=2`);
       const data = await res.json();
@@ -53,14 +63,87 @@ export default function PrayerDetailsPage() {
         }
         setCurrentPrayer(current);
 
-        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-        const geoData = await geoRes.json();
-        setLocationName(geoData.address.city || geoData.address.town || "My Location");
+        if (!isDefault) {
+          try {
+            const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+            const geoData = await geoRes.json();
+            const city = geoData.city || geoData.principalSubdivision || "My Location";
+            setLocationName(city);
+            setIsDefaultLocation(false);
+            safeStorage.setItem('hidayah_location', JSON.stringify({ lat, lng, name: city }));
+          } catch (e) {
+            setLocationName("My Location");
+          }
+        } else {
+          setLocationName("Makkah (Default)");
+          setIsDefaultLocation(true);
+        }
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAutoDetect = async () => {
+    setLoading(true);
+    setLocationName("Detecting...");
+
+    try {
+      // 1. Native Capacitor Geolocation (Best for Android/iOS)
+      if (Capacitor.isNativePlatform()) {
+        const { Geolocation } = await import('@capacitor/geolocation');
+        
+        try {
+          // Check/Request permissions first
+          const permission = await Geolocation.checkPermissions();
+          if (permission.location !== 'granted') {
+            const req = await Geolocation.requestPermissions();
+            if (req.location !== 'granted') throw new Error("Permission denied");
+          }
+
+          const pos = await Geolocation.getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: 10000
+          });
+
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          await fetchTimes(lat, lng);
+          return;
+        } catch (nativeErr) {
+          console.warn("Native geolocation failed, trying browser fallback", nativeErr);
+        }
+      }
+
+      // 2. Standard Browser Geolocation Fallback
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            fetchTimes(lat, lng);
+            safeStorage.setItem('hidayah_location', JSON.stringify({
+              lat,
+              lng,
+              name: "My Location"
+            }));
+          },
+          (err) => {
+            console.warn("Browser Geolocation error:", err);
+            fetchTimes(21.4225, 39.8262, true); 
+            alert("Location access denied or timed out. Defaulting to Makkah.");
+            setLoading(false);
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      } else {
+        throw new Error("No geolocation support");
+      }
+    } catch (err) {
+      console.error("Critical location error:", err);
+      fetchTimes(21.4225, 39.8262, true);
     }
   };
 
@@ -78,51 +161,14 @@ export default function PrayerDetailsPage() {
           setLocationName(name);
           fetchTimes(lat, lng);
         } catch (e) {
-          handleAutoDetect();
+          handleAutoDetect(); // Try auto-detect if cache is corrupt
         }
       } else {
+        // No cache? Try to detect immediately for a premium experience
         handleAutoDetect();
       }
     }
   }, []);
-
-  const handleAutoDetect = () => {
-    if (!("geolocation" in navigator)) {
-      setLocationName("Makkah");
-      fetchTimes(21.4225, 39.8262);
-      return;
-    }
-
-    setLoading(true);
-    setLocationName("Detecting...");
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        fetchTimes(lat, lng);
-        safeStorage.setItem('hidayah_location', JSON.stringify({
-          lat,
-          lng,
-          name: "My Location"
-        }));
-      },
-      (err) => {
-        console.warn("Geolocation error:", err);
-        // If it's a timeout or permission denied, fallback to Makkah if no cache
-        if (!safeStorage.getItem('hidayah_location')) {
-          fetchTimes(21.4225, 39.8262); 
-          setLocationName("Makkah (Default)");
-        }
-        setLoading(false);
-      },
-      { 
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0 
-      }
-    );
-  };
 
   const toggleNotification = (prayer: string) => {
     setNotifications(prev => ({
@@ -155,30 +201,69 @@ export default function PrayerDetailsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--color-hidayah-primary)] pb-12">
-      <header className="px-6 py-8 flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <button onClick={() => router.push('/dashboard')} className="p-2 hover:bg-[var(--color-hidayah-secondary)] rounded-full transition-colors">
-            <ArrowLeft className="w-6 h-6 text-[var(--color-hidayah-dark)]" />
+      <header className="px-6 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <button 
+            onClick={() => router.push('/dashboard')}
+            className="p-3 rounded-2xl bg-white shadow-sm border border-hidayah-border/30 text-hidayah-dark/70 active:scale-95 transition-all"
+          >
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex flex-col items-center">
-             <button 
-               onClick={handleAutoDetect}
-               className="flex items-center gap-1.5 text-[var(--color-hidayah-gold)] text-[10px] font-bold uppercase tracking-widest bg-[var(--color-hidayah-gold)]/10 px-3 py-1 rounded-full hover:bg-[var(--color-hidayah-gold)]/20 transition-all active:scale-95"
-             >
-                <MapPin className="w-3 h-3" />
-                {locationName}
-                <RefreshCw className="w-2.5 h-2.5 ml-1" />
-             </button>
-          </div>
-          <div className="w-10" />
+          
+          <button 
+            onClick={handleAutoDetect}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs shadow-sm transition-all active:scale-95 ${isDefaultLocation ? 'bg-hidayah-gold text-white animate-pulse' : 'bg-white text-hidayah-gold border border-hidayah-gold/20'}`}
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            {isDefaultLocation ? 'ALLOW LOCATION ACCESS' : 'UPDATE LOCATION'}
+            <RefreshCw className={`w-3 h-3 ml-1 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
-        <div className="text-center">
-          <p className="text-sm font-medium text-[var(--color-hidayah-gold)] mb-1 flex items-center justify-center gap-2">
+        {/* Quick City Selector */}
+        <div className="mb-10">
+          <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-hidayah-dark/40 uppercase tracking-widest px-1">
+            <RefreshCw className="w-3 h-3" />
+            Quick Select Location
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar -mx-1 px-1 snap-x">
+            {PRESET_CITIES.map((city) => {
+              const isActive = locationName.includes(city.name);
+              return (
+                <button
+                  key={city.name}
+                  onClick={() => {
+                    console.log("Selecting city:", city.name);
+                    setLocationName(city.name);
+                    fetchTimes(city.lat, city.lng, false); // False ensures it doesn't revert to "Makkah"
+                    setIsDefaultLocation(false);
+                    safeStorage.setItem('hidayah_location', JSON.stringify({ 
+                      lat: city.lat, 
+                      lng: city.lng, 
+                      name: city.name 
+                    }));
+                  }}
+                  className={`snap-start flex-shrink-0 px-6 py-3 rounded-2xl border transition-all active:scale-95 ${isActive 
+                    ? 'bg-hidayah-gold text-white border-hidayah-gold shadow-md shadow-hidayah-gold/20' 
+                    : 'bg-white text-hidayah-dark/60 border-hidayah-border/40 hover:border-hidayah-gold/30'}`}
+                >
+                  <span className="text-xs font-bold whitespace-nowrap tracking-wide">{city.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center text-center mb-10">
+          <div className="flex items-center gap-2 mb-2 text-hidayah-gold opacity-80">
             <Calendar className="w-4 h-4" />
-            {today}
-          </p>
-          <h1 className="text-4xl font-serif font-bold text-[var(--color-hidayah-dark)] mt-2">Prayer Times</h1>
+            <span className="text-sm font-medium">{today}</span>
+          </div>
+          <h1 className="text-4xl font-serif font-bold text-hidayah-dark mb-1">Prayer Times</h1>
+          <div className="flex items-center gap-1.5 text-xs font-bold text-hidayah-dark/30 uppercase tracking-[0.2em]">
+            <MapPin className="w-3 h-3" />
+            {locationName}
+          </div>
         </div>
 
         <motion.div 

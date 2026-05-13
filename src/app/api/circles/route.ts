@@ -101,8 +101,11 @@ export async function POST(req: Request) {
       });
 
       // Send invitations ONLY for private circles
-      if (privacy === 'private' && memberIds && memberIds.length > 0) {
-        const invitations = memberIds.map((recipientId: string) => ({
+      if (privacy === 'private' && Array.isArray(memberIds) && memberIds.length > 0) {
+        // Filter out any null/undefined/empty IDs and ensure creator doesn't invite themselves
+        const validMemberIds = memberIds.filter(id => id && typeof id === 'string' && id !== user.userId);
+        
+        const invitations = validMemberIds.map((recipientId: string) => ({
           recipientId,
           senderId: user.userId,
           senderName: user.username || 'A brother/sister',
@@ -112,7 +115,9 @@ export async function POST(req: Request) {
           status: 'pending'
         }));
         
-        await Promise.all(invitations.map((invite: any) => Notification.create(invite)));
+        if (invitations.length > 0) {
+          await Promise.all(invitations.map((invite: any) => Notification.create(invite)));
+        }
       }
 
       return NextResponse.json({ circle: newCircle }, { status: 201 });

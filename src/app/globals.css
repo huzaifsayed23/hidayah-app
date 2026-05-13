@@ -30,6 +30,8 @@
   --color-hidayah-gold: #C9A86A;
   --color-hidayah-dark: #2E2A26;
   --color-hidayah-border: #D1BFA6;
+  --color-hidayah-mushaf-bg: #fbf8f1;
+  --color-hidayah-mushaf-header: #f7f3e9;
 }
 
 .dark {
@@ -38,6 +40,8 @@
   --color-hidayah-gold: #C9A86A;
   --color-hidayah-dark: #F5F5F5;
   --color-hidayah-border: #333333;
+  --color-hidayah-mushaf-bg: #121212;
+  --color-hidayah-mushaf-header: #1a1a1a;
 }
 
 @theme {
@@ -217,7 +221,7 @@
     padding: 1.5rem 1rem; /* Better breathing room */
     word-break: keep-all;
     -webkit-font-smoothing: antialiased;
-    color: #2E2A26;
+    color: var(--color-hidayah-dark);
   }
   
   /* Safe area for mobile devices */

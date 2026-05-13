@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, MapPin, ChevronRight, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { safeStorage } from '@/lib/storage';
 import Link from 'next/link';
 
 interface PrayerTimes {
@@ -21,60 +22,91 @@ export default function PrayerCard() {
   const [currentPrayer, setCurrentPrayer] = useState<string>("");
   const [nextPrayer, setNextPrayer] = useState<{ name: string; time: string } | null>(null);
   const [countdown, setCountdown] = useState<string>("");
-  const [locationName, setLocationName] = useState<string>("Detecting...");
+  const [locationName, setLocationName] = useState<string>("Tap to set location");
+  const [isDefaultLocation, setIsDefaultLocation] = useState<boolean>(true);
+
+  const fetchPrayerTimes = async (lat: number, lng: number, isDefault: boolean = false) => {
+    try {
+      const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=2`);
+      const data = await res.json();
+      if (data.code === 200) {
+        const timings = data.data.timings;
+        setTimes({
+          Fajr: timings.Fajr,
+          Sunrise: timings.Sunrise,
+          Dhuhr: timings.Dhuhr,
+          Asr: timings.Asr,
+          Maghrib: timings.Maghrib,
+          Isha: timings.Isha,
+        });
+        
+        if (!isDefault) {
+          try {
+            const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+            const geoData = await geoRes.json();
+            const city = geoData.city || geoData.principalSubdivision || "My Location";
+            setLocationName(city);
+            setIsDefaultLocation(false);
+            safeStorage.setItem('hidayah_location', JSON.stringify({ lat, lng, name: city }));
+          } catch (e) {
+            setLocationName("My Location");
+          }
+        } else {
+          setLocationName("Makkah");
+          setIsDefaultLocation(true);
+        }
+      } else {
+        setError("Failed to fetch timings");
+      }
+    } catch (err) {
+      setError("Error fetching prayer times");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPrayerTimes = async (lat: number, lng: number) => {
-      try {
-        const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=2`);
-        const data = await res.json();
-        if (data.code === 200) {
-          const timings = data.data.timings;
-          setTimes({
-            Fajr: timings.Fajr,
-            Sunrise: timings.Sunrise,
-            Dhuhr: timings.Dhuhr,
-            Asr: timings.Asr,
-            Maghrib: timings.Maghrib,
-            Isha: timings.Isha,
-          });
-          
-          // Reverse geocode to get city name
-          const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-          const geoData = await geoRes.json();
-          const city = geoData.address.city || geoData.address.town || geoData.address.village || "My Location";
-          setLocationName(city);
-        } else {
-          setError("Failed to fetch timings");
-        }
-      } catch (err) {
-        setError("Error fetching prayer times");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     const getLocation = () => {
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            fetchPrayerTimes(position.coords.latitude, position.coords.longitude);
-          },
-          (err) => {
-            setError("Location access denied. Using default.");
-            // Fallback to a default location (e.g., Makkah)
-            fetchPrayerTimes(21.4225, 39.8262);
-            setLocationName("Makkah");
-          }
-        );
-      } else {
-        setError("Geolocation not supported");
-        setLoading(false);
+      const cached = safeStorage.getItem('hidayah_location');
+      if (cached) {
+        const { lat, lng, name } = JSON.parse(cached);
+        setLocationName(name);
+        fetchPrayerTimes(lat, lng);
+        setIsDefaultLocation(false);
+        return;
       }
+
+      // If no cache, we default to Makkah but leave isDefaultLocation as true 
+      // so the "Allow Access" button is visible
+      fetchPrayerTimes(21.4225, 39.8262, true);
     };
 
     getLocation();
   }, []);
+
+  const requestLocation = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    if ("geolocation" in navigator) {
+      setLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          fetchPrayerTimes(position.coords.latitude, position.coords.longitude);
+        },
+        (err) => {
+          console.warn("Location error:", err);
+          fetchPrayerTimes(21.4225, 39.8262, true);
+          alert("Location access denied or timed out. Using Makkah time.");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  };
 
   useEffect(() => {
     if (!times) return;
@@ -163,9 +195,19 @@ export default function PrayerCard() {
               <MapPin className="w-3.5 h-3.5 text-[var(--color-hidayah-gold)]" />
               <span className="text-xs font-bold text-[var(--color-hidayah-dark)]/70 uppercase tracking-wider">{locationName}</span>
             </div>
-            <div className="p-2 rounded-full bg-[var(--color-hidayah-gold)]/10 text-[var(--color-hidayah-gold)]">
-              <ChevronRight className="w-5 h-5" />
-            </div>
+            {isDefaultLocation ? (
+              <button 
+                onClick={requestLocation}
+                className="flex items-center gap-1.5 text-[10px] font-bold text-white bg-[var(--color-hidayah-gold)] px-4 py-2 rounded-full hover:opacity-90 transition-all active:scale-95 shadow-md animate-pulse"
+              >
+                <MapPin className="w-3 h-3" />
+                Set My Location
+              </button>
+            ) : (
+              <div className="p-2 rounded-full bg-[var(--color-hidayah-gold)]/10 text-[var(--color-hidayah-gold)]">
+                <ChevronRight className="w-5 h-5" />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col">

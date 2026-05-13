@@ -156,19 +156,18 @@ export default function QuranReaderClient({ initialPage, juzNumber }: { initialP
             <div 
               key={pageNum} 
               ref={(el) => { pageRefs.current[pageNum] = el; }}
-              className="bg-[#fbf8f1] rounded-[32px] shadow-lg border border-hidayah-border/10 overflow-hidden relative"
+              className="bg-[var(--color-hidayah-mushaf-bg)] rounded-[32px] shadow-lg border border-hidayah-border/10 overflow-hidden relative transition-colors duration-300"
             >
               {/* Page Header */}
-              <div className="px-10 py-3 border-b border-hidayah-border/5 flex justify-between items-center bg-hidayah-secondary/20">
-                 <span className="text-[9px] font-bold text-hidayah-dark/30 uppercase tracking-widest">Page {pageNum}</span>
+              <div className="px-10 py-3 border-b border-hidayah-border/5 flex justify-between items-center bg-[var(--color-hidayah-mushaf-header)]">
+                 <span className="text-[9px] font-bold text-hidayah-dark/30 dark:text-hidayah-dark/40 uppercase tracking-widest">Page {pageNum}</span>
                  <span className="text-[9px] font-bold text-hidayah-gold uppercase tracking-widest">Juz {juzNumber}</span>
               </div>
 
               <div className="p-4 sm:p-8 lg:p-10">
                 <div 
-                  className="mushaf-layout font-arabic text-[22px] sm:text-[36px] text-center leading-[1.15] sm:leading-[1.2] tracking-tight antialiased" 
+                  className="mushaf-layout font-arabic text-[24px] sm:text-[38px] text-center antialiased" 
                   dir="rtl"
-                  style={{ wordSpacing: '-0.08em', letterSpacing: '-0.02em' }}
                 >
                   {pages[pageNum].map((verse: any, idx: number) => {
                     const isBookmarked = bookmarks.includes(verse.verse_key);

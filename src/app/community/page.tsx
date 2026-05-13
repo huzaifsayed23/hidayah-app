@@ -63,6 +63,8 @@ function CommunityContent() {
           uName = user.username ? `@${user.username}` : user.email.split('@')[0];
           setCurrentUserId(userId);
           setUserName(uName);
+          // Save for components that rely on localStorage fallback
+          safeStorage.setItem('hidayah_user', JSON.stringify(user));
         }
 
         if (postsRes.ok) {

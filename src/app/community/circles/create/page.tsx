@@ -47,7 +47,7 @@ export default function CreateCirclePage() {
         const data = await res.json();
         if (res.ok) {
           const filtered = data.users.filter((u: any) => 
-            !selectedMembers.some(sm => sm.id === u.id)
+            !selectedMembers.some(sm => (sm._id || sm.id) === (u._id || u.id))
           );
           setSearchResults(filtered);
         }
@@ -69,7 +69,7 @@ export default function CreateCirclePage() {
   };
 
   const handleRemoveMember = (userId: string) => {
-    setSelectedMembers(selectedMembers.filter(m => m.id !== userId));
+    setSelectedMembers(selectedMembers.filter(m => (m._id || m.id) !== userId));
   };
 
   const handleCreate = async () => {
@@ -96,7 +96,7 @@ export default function CreateCirclePage() {
           description,
           category,
           privacy,
-          memberIds: privacy === 'private' ? selectedMembers.map(m => m.id) : []
+          memberIds: privacy === 'private' ? selectedMembers.map(m => m._id || m.id) : []
         })
       });
 
@@ -279,15 +279,14 @@ export default function CreateCirclePage() {
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-[var(--color-hidayah-primary)] flex items-center justify-center font-bold text-[var(--color-hidayah-gold)]">
-                            {user.username.charAt(0).toUpperCase()}
+                            {user.username?.charAt(0).toUpperCase() || 'U'}
                           </div>
                           <div>
                             <p className="font-bold text-[var(--color-hidayah-dark)]">@{user.username}</p>
-                            <p className="text-xs opacity-50">{user.email}</p>
                           </div>
                         </div>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${selectedMembers.some(m => m.id === user.id) ? 'bg-green-500 text-white' : 'bg-[var(--color-hidayah-gold)]/10 text-[var(--color-hidayah-gold)]'}`}>
-                          {selectedMembers.some(m => m.id === user.id) ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${selectedMembers.some(m => (m._id || m.id) === (user._id || user.id)) ? 'bg-green-500 text-white' : 'bg-[var(--color-hidayah-gold)]/10 text-[var(--color-hidayah-gold)]'}`}>
+                          {selectedMembers.some(m => (m._id || m.id) === (user._id || user.id)) ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
                         </div>
                       </button>
                     ))}
@@ -331,7 +330,7 @@ export default function CreateCirclePage() {
                 </button>
                 <button 
                   onClick={handleCreate}
-                  disabled={isLoading || selectedMembers.length < 2}
+                  disabled={isLoading}
                   className="flex-[2] py-5 rounded-2xl bg-[var(--color-hidayah-dark)] text-[var(--color-hidayah-primary)] font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-3"
                 >
                   {isLoading ? (

@@ -74,7 +74,7 @@ export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: s
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FDFBF7] flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-[var(--color-hidayah-primary)] flex flex-col items-center justify-center p-6">
         <Loader2 className="w-12 h-12 text-hidayah-gold animate-spin mb-4" />
         <p className="text-hidayah-dark/50 font-serif">Opening the Surah...</p>
       </div>
@@ -110,11 +110,11 @@ export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: s
 
         <div className="flex flex-col gap-10">
           {verses.map((verse) => (
-            <div key={verse.id} className="bg-[#F2E8DA] p-6 rounded-[32px] border border-hidayah-border/40 shadow-sm">
+            <div key={verse.id} className="bg-[var(--color-hidayah-secondary)] p-6 rounded-[32px] border border-hidayah-border/40 shadow-sm">
               <div className="text-right font-arabic mushaf-layout mb-6" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
                 {verse.text_indopak} <span className="text-hidayah-gold mx-1 font-arabic">﴾{toArabicIndic(verse.verse_key.split(":")[1])}﴿</span>
               </div>
-              <div className="text-black text-sm leading-relaxed border-l-2 border-hidayah-gold/30 pl-4">
+              <div className="text-[var(--color-hidayah-dark)] text-sm leading-relaxed border-l-2 border-hidayah-gold/30 pl-4 opacity-70">
                 {verse.translations?.[0]?.text.replace(/<[^>]*>/g, "") || "Translation unavailable"}
               </div>
             </div>

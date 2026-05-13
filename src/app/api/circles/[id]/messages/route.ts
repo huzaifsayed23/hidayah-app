@@ -244,8 +244,32 @@ export async function POST(
       // Use the resolved circleId for consistent channel names if possible, 
       // but keep 'id' (slug) for compatibility with existing client subscriptions
       await pusherServer.trigger(`circle-${id}`, 'new-message', pusherMessage);
+
+      // Create in-app notifications for all members EXCEPT the sender
+      const circle = await Circle.findById(circleId).select('members title');
+      if (circle && circle.members && circle.members.length > 0) {
+        const Notification = (await import('@/models/Notification')).default;
+        
+        const otherMembers = circle.members.filter((m: any) => m.toString() !== user.userId.toString());
+        
+        if (otherMembers.length > 0) {
+          // Prepare notification data
+          const notificationData = otherMembers.map((memberId: any) => ({
+            recipientId: memberId,
+            senderId: user.userId,
+            senderName: formattedMessage.senderName,
+            type: 'circle_message',
+            circleId: circleId,
+            circleTitle: circle.title,
+            commentText: text ? (text.length > 60 ? text.substring(0, 57) + '...' : text) : (imageUrl ? "Shared an image" : "Shared a file"),
+          }));
+
+          // Bulk insert for efficiency
+          await Notification.insertMany(notificationData, { ordered: false }).catch(e => console.error("Notification bulk insert error:", e));
+        }
+      }
     } catch (e) {
-      console.error('Pusher Trigger Error (non-fatal):', e);
+      console.error('Notification/Pusher Error (non-fatal):', e);
     }
 
     return NextResponse.json({ message: formattedMessage }, { 

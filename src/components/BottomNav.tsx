@@ -10,7 +10,6 @@ export default function BottomNav() {
   const pathname = rawPathname?.replace(/\/$/, '') || '/';
   
   // Debug log
-  console.log("Navbar rendering for path:", pathname);
 
   const isQuranReadPage = pathname?.startsWith('/quran/read');
   const isQuizLevelPage = pathname?.startsWith('/quiz/') && pathname !== '/quiz';
@@ -60,6 +59,7 @@ export default function BottomNav() {
               <Link
                 key={item.name}
                 href={item.href}
+                prefetch={false}
                 className="flex items-center justify-center w-12 h-12 rounded-full bg-[#C9A86A] text-white shadow-lg hover:scale-110 active:scale-90 transition-all mx-1 shrink-0"
               >
                 <Icon className="w-6 h-6" />
@@ -68,18 +68,19 @@ export default function BottomNav() {
           }
 
           return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={`flex items-center gap-2 ${isActive ? 'px-4' : 'px-3'} py-3 rounded-full transition-all duration-300 ${
-                isActive 
-                  ? 'bg-[#2E2A26] text-[#F2EBE1] shadow-md' 
-                  : 'text-[#2E2A26]/60 hover:bg-[#E8DCCB]'
-              }`}
-            >
-              <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''} transition-transform`} />
-              {isActive && <span className="text-[10px] font-bold uppercase tracking-widest">{item.name}</span>}
-            </Link>
+              <Link
+                key={item.name}
+                href={item.href}
+                prefetch={false}
+                className={`flex items-center gap-2 ${isActive ? 'px-4' : 'px-3'} py-3 rounded-full transition-all duration-300 ${
+                  isActive 
+                    ? 'bg-[#2E2A26] text-[#F2EBE1] shadow-md' 
+                    : 'text-[#2E2A26]/60 hover:bg-[#E8DCCB]'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''} transition-transform`} />
+                {isActive && <span className="text-[10px] font-bold uppercase tracking-widest">{item.name}</span>}
+              </Link>
           );
         })}
       </nav>

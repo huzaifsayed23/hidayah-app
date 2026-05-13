@@ -33,5 +33,45 @@ export const safeStorage = {
     try {
       localStorage.removeItem(key);
     } catch (e) {}
+  },
+  /**
+   * Specifically for the community feed cache to keep it in sync with interactions
+   */
+  updateCommunityCache: (postId: string, updates: any) => {
+    try {
+      const cached = localStorage.getItem('hidayah_community_cache');
+      if (cached) {
+        const data = JSON.parse(cached);
+        if (data.posts) {
+          data.posts = data.posts.map((p: any) => 
+            (p._id === postId || p.id === postId) ? { ...p, ...updates } : p
+          );
+          localStorage.setItem('hidayah_community_cache', JSON.stringify(data));
+        }
+      }
+    } catch (e) {}
+  },
+  /**
+   * Specifically for the profile saved tab
+   */
+  updateProfileSaveCache: (post: any, isSaved: boolean) => {
+    try {
+      const cached = localStorage.getItem('hidayah_profile_cache');
+      if (cached) {
+        const data = JSON.parse(cached);
+        if (data.posts) {
+          if (isSaved) {
+            // Only add if not already there
+            if (!data.posts.some((p: any) => (p._id === post._id || p.id === post._id))) {
+              data.posts.unshift(post);
+            }
+          } else {
+            // Remove if unsaved
+            data.posts = data.posts.filter((p: any) => (p._id !== post._id && p.id !== post._id));
+          }
+          localStorage.setItem('hidayah_profile_cache', JSON.stringify(data));
+        }
+      }
+    } catch (e) {}
   }
 };

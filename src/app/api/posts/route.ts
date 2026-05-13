@@ -8,6 +8,9 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { getAuthUser } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
+
 
 
 export async function GET(req: Request) {
@@ -27,7 +30,7 @@ export async function GET(req: Request) {
     const currentUserId = authUser?.userId || authUser?.id;
 
     const query: any = { isVisible: { $ne: false } };
-    if (userId) {
+    if (userId && tab !== 'saved') {
       query.userId = userId;
     }
     if (mood && mood !== 'All') {
@@ -38,8 +41,10 @@ export async function GET(req: Request) {
     if (tab === 'saved' && currentUserId) {
       const User = (await import('@/models/User')).default;
       const user = await User.findById(currentUserId).select('savedPosts');
-      if (user && user.savedPosts.length > 0) {
-        query._id = { $in: user.savedPosts };
+      if (user && user.savedPosts && user.savedPosts.length > 0) {
+        // Ensure we are querying by ObjectIds
+        const savedIds = user.savedPosts.map((id: any) => id.toString());
+        query._id = { $in: savedIds };
       } else {
         return NextResponse.json({ posts: [], page: 1, limit: 50 }, { status: 200 });
       }
