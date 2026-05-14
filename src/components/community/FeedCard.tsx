@@ -270,27 +270,55 @@ const FeedCard = memo(({
 
   const submitReply = async () => {
     if (!replyText.trim() || isSubmittingReply) return;
+    
+    const textToSubmit = replyText.trim();
+    const originalReplies = [...repliesList];
+    
+    // Clear input and show loading state immediately
+    setReplyText("");
     setIsSubmittingReply(true);
+    
+    // 1. Optimistic Update - Add to UI immediately
+    const optimisticReply = {
+      _id: `temp-${Date.now()}`,
+      author: effectiveUserName || "User",
+      content: textToSubmit,
+      createdAt: new Date().toISOString()
+    };
+    
+    const updatedReplies = [...repliesList, optimisticReply];
+    setRepliesList(updatedReplies);
     
     try {
       const res = await hidayahFetch(`/api/posts/${id}/reply/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: replyText })
+        body: JSON.stringify({ content: textToSubmit })
       });
+      
       if (res.ok) {
         const data = await res.json();
-        const updatedReplies = [...repliesList, data.reply];
-        setRepliesList(updatedReplies);
-        setReplyText("");
+        // Replace optimistic list with real list from server (which includes the real ID)
+        const finalReplies = [...originalReplies, data.reply];
+        setRepliesList(finalReplies);
         
         // Update local community cache
         safeStorage.updateCommunityCache(id, { 
-          replies: updatedReplies,
-          commentCount: updatedReplies.length 
+          replies: finalReplies,
+          commentCount: finalReplies.length 
         });
+      } else {
+        // Revert on failure
+        setRepliesList(originalReplies);
+        setReplyText(textToSubmit); // Restore text
+        const errorData = await res.json().catch(() => ({}));
+        alert(`Could not post comment: ${errorData.message || 'Server Error'}`);
       }
     } catch (e) {
+      // Revert on error
+      setRepliesList(originalReplies);
+      setReplyText(textToSubmit);
+      alert("Connection error. Please try again.");
     } finally {
       setIsSubmittingReply(false);
     }
@@ -301,14 +329,17 @@ const FeedCard = memo(({
     let activeId = effectiveUserId;
     if (!activeId && typeof window !== 'undefined') {
       try {
-        const userJson = JSON.parse(localStorage.getItem('hidayah_user') || '{}');
-        const u = userJson?.user || userJson;
-        activeId = u?._id || u?.id || "";
+        const userJsonStr = localStorage.getItem('hidayah_user');
+        if (userJsonStr) {
+          const userJson = JSON.parse(userJsonStr);
+          const u = userJson?.user || userJson;
+          activeId = u?._id || u?.id || "";
+        }
       } catch (e) {}
     }
 
     if (!activeId) {
-      alert('Please sign in to save reflections.');
+      alert('Please sign in to manage your saved reflections.');
       return;
     }
     
@@ -383,25 +414,43 @@ const FeedCard = memo(({
 
   const handleDeleteComment = async (replyId: string) => {
     if (!replyId) return;
+
+    // Store original state for potential revert
+    const originalReplies = [...repliesList];
+    
+    // 1. Optimistic Update - Remove from UI instantly
+    const updatedReplies = repliesList.filter(r => (r._id || r.id) !== replyId);
+    setRepliesList(updatedReplies);
+    
+    // Update local community cache immediately for instant feedback across the app
+    safeStorage.updateCommunityCache(id, { 
+      replies: updatedReplies,
+      commentCount: updatedReplies.length 
+    });
+
     try {
       // Use explicit trailing slash + fallback param to guarantee compatibility with all environments
       const res = await hidayahFetch(`/api/posts/${id}/reply/?replyId=${replyId}&action=delete`, {
         method: 'POST' // Use POST fallback which is most reliable in mobile/web bridges
       });
-      if (res.ok) {
-        const updatedReplies = repliesList.filter(r => (r._id || r.id) !== replyId);
-        setRepliesList(updatedReplies);
-        
-        // Update local community cache
+      
+      if (!res.ok) {
+        // 2. Revert on server failure
+        setRepliesList(originalReplies);
         safeStorage.updateCommunityCache(id, { 
-          replies: updatedReplies,
-          commentCount: updatedReplies.length 
+          replies: originalReplies,
+          commentCount: originalReplies.length 
         });
-      } else {
         const errorData = await res.json().catch(() => ({}));
         alert(`Could not delete comment: ${errorData.message || 'Server Error'}`);
       }
     } catch (err) {
+      // 3. Revert on connection error
+      setRepliesList(originalReplies);
+      safeStorage.updateCommunityCache(id, { 
+        replies: originalReplies,
+        commentCount: originalReplies.length 
+      });
       console.error(err);
       alert("Connection error. Please check your internet.");
     }
@@ -635,10 +684,10 @@ const FeedCard = memo(({
                     const replyAuthorClean = (reply.author || "").replace(/^@/, '').trim().toLowerCase();
                     
                     const isMyComment = loggedInUsername && replyAuthorClean && loggedInUsername === replyAuthorClean;
-                    const isMyPost = userId && loggedInId && userId.toString() === loggedInId.toString();
                     const isGlobalAdmin = ['huzaifsayed454@gmail.com', 'huzaifsayed23@gmail.com'].includes(loggedInEmail) || (actualUserFromStorage?.isAdmin);
 
-                    const canDelete = isMyComment || isMyPost || isGlobalAdmin;
+                    // Only the comment author or an admin can delete comments to prevent confusion
+                    const canDelete = isMyComment || isGlobalAdmin;
 
                     return (
                       <div 
