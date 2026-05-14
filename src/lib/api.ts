@@ -137,7 +137,7 @@ export async function hidayahFetch(url: string, options: RequestInit = {}) {
       }
     }
 
-    const baseUrl = (isLocalhost && !isNative) ? window.location.origin : HIDAYAH_API_URL;
+    const baseUrl = (isWeb && !isNative) ? window.location.origin : HIDAYAH_API_URL;
 
     try {
       const res = await universalFetch(`${baseUrl}${path}`, { ...options, headers });

@@ -218,10 +218,18 @@ const FeedCard = memo(({
   };
 
   // Synchronize internal state with props only when they change meaningfully
+  const lastProps = React.useRef({ isSaved, ameens });
   React.useEffect(() => {
-    if (ameens) setIsLiked(ameens.includes(effectiveUserId || ""));
+    if (ameens && ameens !== lastProps.current.ameens) {
+      setIsLiked(ameens.includes(effectiveUserId || ""));
+      lastProps.current.ameens = ameens;
+    }
     if (ameenCount !== undefined) setLikesCount(ameenCount);
-    if (isSaved !== undefined) setIsSavedPost(isSaved);
+    
+    if (isSaved !== undefined && isSaved !== lastProps.current.isSaved) {
+      setIsSavedPost(isSaved);
+      lastProps.current.isSaved = isSaved;
+    }
   }, [ameens, ameenCount, effectiveUserId, isSaved]);
 
   // Handle replies list separately to avoid wiping optimistic updates
