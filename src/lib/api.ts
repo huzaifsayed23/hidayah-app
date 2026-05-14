@@ -98,12 +98,18 @@ export async function hidayahFetch(url: string, options: RequestInit = {}) {
       // Special handling for auth/me to make it instant
       if (path === '/api/auth/me/' || path === '/api/auth/me') {
         if (authCache && (now - authCache.timestamp < CACHE_TTL)) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => JSON.parse(JSON.stringify(authCache!.data)),
-            clone: function() { return this; }
-          } as any;
+          // Verify we have a token in localStorage, otherwise cache might be stale after logout
+          const token = localStorage.getItem('hidayah_token');
+          if (token) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => JSON.parse(JSON.stringify(authCache!.data)),
+              clone: function() { return this; }
+            } as any;
+          } else {
+            authCache = null; // Clear stale cache
+          }
         }
       } else if (responseCache[cacheKey] && (now - responseCache[cacheKey].timestamp < 10000)) {
         // Cache other GET requests for 10 seconds to smooth out transitions
@@ -117,9 +123,9 @@ export async function hidayahFetch(url: string, options: RequestInit = {}) {
       }
     }
 
-    // Add trailing slash only if it's not a dynamic route or specific API
-    if (!path.includes('.') && !path.includes('?') && !path.endsWith('/')) {
-      // We skip trailing slash for known core routes that might be sensitive
+    // Ensure internal API routes have a trailing slash (required for Next.js consistency)
+    // We check this BEFORE query parameters to avoid corruption
+    if (path.startsWith('/api/') && !path.includes('.') && !path.endsWith('/')) {
       const skipTrailing = ['/api/auth/me', '/api/users/profile', '/api/users/search'];
       if (!skipTrailing.includes(path)) {
         path += '/';
@@ -142,19 +148,32 @@ export async function hidayahFetch(url: string, options: RequestInit = {}) {
     try {
       const res = await universalFetch(`${baseUrl}${path}`, { ...options, headers });
       
-      // Cache successful GET responses
-      if (res.ok && isGet && isWeb) {
-        const cacheKey = path;
-        const clonedRes = res.clone ? res.clone() : res;
-        try {
-          const data = await clonedRes.json();
-          const cacheEntry = { data, timestamp: Date.now() };
-          if (path === '/api/auth/me/' || path === '/api/auth/me') {
-            authCache = cacheEntry;
-          } else {
-            responseCache[cacheKey] = cacheEntry;
+      // Cache management
+      if (res.ok) {
+        if (isGet && isWeb) {
+          // Cache successful GET responses
+          const cacheKey = path;
+          const clonedRes = res.clone ? res.clone() : res;
+          try {
+            const data = await clonedRes.json();
+            const cacheEntry = { data, timestamp: Date.now() };
+            if (path === '/api/auth/me/' || path === '/api/auth/me') {
+              authCache = cacheEntry;
+            } else {
+              responseCache[cacheKey] = cacheEntry;
+            }
+          } catch (e) {}
+        } else if (!isGet && isWeb) {
+          // Invalidate cache on mutations (POST, DELETE, PATCH, etc.)
+          // We clear auth cache if it's an auth endpoint
+          if (path.includes('/api/auth/')) {
+            authCache = null;
           }
-        } catch (e) {}
+          
+          // Clear all cached GET responses to ensure fresh data on next navigation
+          // This is a "hammer" approach but safest for a high-interaction app
+          Object.keys(responseCache).forEach(key => delete responseCache[key]);
+        }
       }
 
       if (res.ok) return res;

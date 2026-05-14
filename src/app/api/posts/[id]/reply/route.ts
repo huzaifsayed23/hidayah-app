@@ -76,14 +76,23 @@ async function performCommentDeletion(postId: string, replyId: string) {
       return NextResponse.json({ message: 'You do not have permission to delete this comment' }, { status: 403, headers: corsHeaders });
     }
 
-    // Perform deletion
-    post.replies.splice(replyIndex, 1);
-    post.commentCount = post.replies.length;
-    await post.save();
+    // Perform atomic deletion using $pull
+    const updatedPost = await Post.findByIdAndUpdate(
+      postId,
+      { 
+        $pull: { replies: { _id: replyId } },
+        $inc: { commentCount: -1 }
+      },
+      { new: true }
+    );
+
+    if (!updatedPost) {
+      return NextResponse.json({ message: 'Failed to update post' }, { status: 500, headers: corsHeaders });
+    }
 
     return NextResponse.json({ 
       message: 'Comment deleted', 
-      commentCount: post.commentCount 
+      commentCount: updatedPost.commentCount 
     }, { status: 200, headers: corsHeaders });
 
   } catch (error: any) {
@@ -141,8 +150,11 @@ export async function POST(
     post.commentCount = post.replies.length;
     await post.save();
 
+    // Get the newly added reply with its database-generated _id
+    const savedReply = post.replies[post.replies.length - 1];
+
     return NextResponse.json({ 
-      reply: newReply,
+      reply: savedReply,
       commentCount: post.commentCount
     }, { status: 200, headers: { 'Access-Control-Allow-Origin': '*' } });
 
