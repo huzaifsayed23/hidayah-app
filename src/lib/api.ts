@@ -124,8 +124,8 @@ export async function hidayahFetch(url: string, options: RequestInit = {}) {
     }
 
     // Ensure internal API routes have a trailing slash (required for Next.js consistency)
-    // We check this BEFORE query parameters to avoid corruption
-    if (path.startsWith('/api/') && !path.includes('.') && !path.endsWith('/')) {
+    // We check this BEFORE query parameters are appended if the path is simple
+    if (path.startsWith('/api/') && !path.includes('.') && !path.includes('?') && !path.endsWith('/')) {
       const skipTrailing = ['/api/auth/me', '/api/users/profile', '/api/users/search'];
       if (!skipTrailing.includes(path)) {
         path += '/';
