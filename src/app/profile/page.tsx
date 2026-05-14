@@ -93,6 +93,10 @@ function ProfileContent() {
             user: profileData.user,
             posts: fetchedPosts
           }));
+        } else if (profileRes.status === 401) {
+          router.push('/auth');
+        } else {
+          setError("Could not load your profile details");
         }
       }
     } catch (e) {

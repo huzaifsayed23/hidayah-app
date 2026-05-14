@@ -117,15 +117,11 @@ export async function hidayahFetch(url: string, options: RequestInit = {}) {
       }
     }
 
-    // Add trailing slash for internal API routes
-    if (!path.includes('.')) {
-      const queryIndex = path.indexOf('?');
-      if (queryIndex !== -1) {
-        const basePath = path.substring(0, queryIndex);
-        if (!basePath.endsWith('/')) {
-          path = basePath + '/' + path.substring(queryIndex);
-        }
-      } else if (!path.endsWith('/')) {
+    // Add trailing slash only if it's not a dynamic route or specific API
+    if (!path.includes('.') && !path.includes('?') && !path.endsWith('/')) {
+      // We skip trailing slash for known core routes that might be sensitive
+      const skipTrailing = ['/api/auth/me', '/api/users/profile', '/api/users/search'];
+      if (!skipTrailing.includes(path)) {
         path += '/';
       }
     }

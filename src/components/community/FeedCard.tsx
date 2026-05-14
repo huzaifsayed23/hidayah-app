@@ -217,14 +217,17 @@ const FeedCard = memo(({
     }
   };
 
+  // Synchronize internal state with props only when they change meaningfully
   React.useEffect(() => {
-    // Only update if currentUserId is set, otherwise it might be a public view
-    // where we don't want to overwrite local states until fresh props arrive
     if (ameens) setIsLiked(ameens.includes(effectiveUserId || ""));
     if (ameenCount !== undefined) setLikesCount(ameenCount);
-    if (replies) setRepliesList(replies);
     if (isSaved !== undefined) setIsSavedPost(isSaved);
-  }, [ameens, ameenCount, effectiveUserId, replies, isSaved]);
+  }, [ameens, ameenCount, effectiveUserId, isSaved]);
+
+  // Handle replies list separately to avoid wiping optimistic updates
+  React.useEffect(() => {
+    if (replies) setRepliesList(replies);
+  }, [replies]);
 
 
   const handleLike = async () => {
