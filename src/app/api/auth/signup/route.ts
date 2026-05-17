@@ -125,7 +125,7 @@ export async function POST(req: Request) {
         token 
       },
       {
-        status: 201,
+        status: 200,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',

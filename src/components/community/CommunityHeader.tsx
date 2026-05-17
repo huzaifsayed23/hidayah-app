@@ -70,7 +70,7 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[var(--color-hidayah-primary)]/80 backdrop-blur-xl -mx-4 px-4 py-4 mb-6 border-b border-[var(--color-hidayah-border)]/10">
+    <header className="sticky top-0 z-40 bg-[var(--color-hidayah-primary)]/80 backdrop-blur-xl -mx-4 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] mb-6 border-b border-[var(--color-hidayah-border)]/10">
       <div className="flex items-center justify-between mb-0">
         <AnimatePresence mode="wait">
           {!isSearching ? (

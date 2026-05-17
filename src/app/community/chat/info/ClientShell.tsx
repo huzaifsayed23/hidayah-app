@@ -287,7 +287,7 @@ export default function CircleInfoPage() {
 
   return (
     <div className="min-h-screen bg-[var(--color-hidayah-primary)] pb-24 transition-colors duration-500">
-      <header className="sticky top-0 z-50 bg-[var(--color-hidayah-primary)]/80 backdrop-blur-md px-4 py-4 border-b border-[var(--color-hidayah-border)]/10 shadow-sm">
+      <header className="sticky top-0 z-50 bg-[var(--color-hidayah-primary)]/80 backdrop-blur-md px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] border-b border-[var(--color-hidayah-border)]/10 shadow-sm">
         <div className="max-w-2xl mx-auto flex items-center gap-4">
           <div className="flex items-center gap-4">
             <button onClick={() => router.back()} className="p-2 hover:bg-[var(--color-hidayah-secondary)] rounded-full transition-colors">

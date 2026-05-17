@@ -165,7 +165,9 @@ function ProfileContent() {
 
   const userName = userData ? `@${user.username || 'User'}` : "Loading...";
   const userInitial = user.username ? user.username.charAt(0).toUpperCase() : "U";
-  const joinedDate = new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const joinedDate = user.createdAt && !isNaN(new Date(user.createdAt).getTime()) 
+    ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) 
+    : 'Recently';
 
   const userImage = user.image;
   const userBio = user.bio || "Seeking knowledge and patience.";

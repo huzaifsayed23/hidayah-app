@@ -119,10 +119,12 @@ export async function POST(req: Request) {
         if (!user.unlockedBackgrounds) user.unlockedBackgrounds = [];
 
         const badge = BADGES.find(b => b.levelRequired === levelNum);
-        if (badge && !user.unlockedBadges.includes(badge.id)) {
-          user.unlockedBadges.push(badge.id);
-          updated = true;
+        if (badge) {
           unlockedReward = { type: 'badge', data: badge };
+          if (!user.unlockedBadges.includes(badge.id)) {
+            user.unlockedBadges.push(badge.id);
+            updated = true;
+          }
         }
 
         if (updated) {

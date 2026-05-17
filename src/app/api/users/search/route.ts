@@ -18,7 +18,7 @@ export async function GET(req: Request) {
         { email: { $regex: q, $options: 'i' } }
       ]
     })
-    .select('username email image bio')
+    .select('username email image bio unlockedBadges createdAt')
     .limit(10);
 
     return NextResponse.json({ users });

@@ -100,7 +100,9 @@ function ProfileContent() {
     );
   }
 
-  const joinedDate = userDoc.createdAt ? new Date(userDoc.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently';
+  const joinedDate = userDoc.createdAt && !isNaN(new Date(userDoc.createdAt).getTime()) 
+    ? new Date(userDoc.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) 
+    : 'Recently';
   const unlockedBadges = userDoc.unlockedBadges || [];
 
   return (

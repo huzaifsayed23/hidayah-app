@@ -583,7 +583,9 @@ export default function CircleChatPage() {
       </AnimatePresence>
 
       {/* Header */}
-      <header className="bg-[var(--color-hidayah-primary)] border-b border-[var(--color-hidayah-border)]/50 px-4 py-3 shrink-0 z-40 shadow-sm">
+      <header 
+        className="bg-[var(--color-hidayah-primary)] border-b border-[var(--color-hidayah-border)]/50 px-4 py-3 shrink-0 z-40 shadow-sm pt-[max(env(safe-area-inset-top),0.75rem)]"
+      >
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => router.push('/community/circles')} className="p-2 hover:bg-[var(--color-hidayah-secondary)] rounded-full transition-colors">
@@ -757,7 +759,7 @@ export default function CircleChatPage() {
       </div>
 
       {/* Input Area */}
-      <div className="bg-[var(--color-hidayah-primary)] border-t border-[var(--color-hidayah-border)]/30 p-4 shrink-0 flex flex-col gap-2">
+      <div className="bg-[var(--color-hidayah-primary)] border-t border-[var(--color-hidayah-border)]/30 p-4 shrink-0 flex flex-col gap-2 pb-[max(env(safe-area-inset-bottom),1rem)]">
         {replyTo && (
           <div className="max-w-4xl mx-auto w-full px-4 py-2 bg-[var(--color-hidayah-secondary)] rounded-xl flex items-center justify-between border border-[var(--color-hidayah-gold)]/30">
             <div className="flex-1 min-w-0">

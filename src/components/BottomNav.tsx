@@ -46,7 +46,7 @@ export default function BottomNav() {
 
   return (
     <div 
-      className="fixed bottom-0 left-0 right-0 z-[10000] flex justify-center p-4 pb-6 pointer-events-none"
+      className="fixed bottom-0 left-0 right-0 z-[10000] flex justify-center p-4 pb-[max(env(safe-area-inset-bottom),1.5rem)] pointer-events-none"
       style={{ position: 'fixed', bottom: 0, left: 0, right: 0 }}
     >
       <nav className="flex items-center gap-1 p-1.5 bg-[#F2EBE1] border-2 border-[#C9A86A] rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.3)] pointer-events-auto max-w-xs w-full justify-between overflow-hidden">

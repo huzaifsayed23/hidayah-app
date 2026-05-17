@@ -41,7 +41,7 @@ export default function PrayerDetailsPage() {
     Isha: true,
   });
 
-  const fetchTimes = async (lat: number, lng: number, isDefault: boolean = false) => {
+  const fetchTimes = async (lat: number, lng: number, isDefault: boolean = false, presetCityName?: string) => {
     try {
       const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=2`);
       const data = await res.json();
@@ -63,7 +63,11 @@ export default function PrayerDetailsPage() {
         }
         setCurrentPrayer(current);
 
-        if (!isDefault) {
+        if (presetCityName) {
+          setLocationName(presetCityName);
+          setIsDefaultLocation(false);
+          safeStorage.setItem('hidayah_location', JSON.stringify({ lat, lng, name: presetCityName }));
+        } else if (!isDefault) {
           try {
             const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
             const geoData = await geoRes.json();
@@ -205,14 +209,14 @@ export default function PrayerDetailsPage() {
         <div className="flex items-center justify-between mb-8">
           <button 
             onClick={() => router.push('/dashboard')}
-            className="p-3 rounded-2xl bg-white shadow-sm border border-hidayah-border/30 text-hidayah-dark/70 active:scale-95 transition-all"
+            className="p-3 rounded-2xl bg-[var(--color-hidayah-secondary)] shadow-sm border border-[var(--color-hidayah-border)]/30 text-[var(--color-hidayah-dark)]/70 active:scale-95 transition-all"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           
           <button 
             onClick={handleAutoDetect}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs shadow-sm transition-all active:scale-95 ${isDefaultLocation ? 'bg-hidayah-gold text-white animate-pulse' : 'bg-white text-hidayah-gold border border-hidayah-gold/20'}`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs shadow-sm transition-all active:scale-95 ${isDefaultLocation ? 'bg-[var(--color-hidayah-gold)] text-white animate-pulse' : 'bg-[var(--color-hidayah-secondary)] text-[var(--color-hidayah-gold)] border border-[var(--color-hidayah-gold)]/20'}`}
           >
             <MapPin className="w-3.5 h-3.5" />
             {isDefaultLocation ? 'ALLOW LOCATION ACCESS' : 'UPDATE LOCATION'}
@@ -235,7 +239,7 @@ export default function PrayerDetailsPage() {
                   onClick={() => {
                     console.log("Selecting city:", city.name);
                     setLocationName(city.name);
-                    fetchTimes(city.lat, city.lng, false); // False ensures it doesn't revert to "Makkah"
+                    fetchTimes(city.lat, city.lng, false, city.name);
                     setIsDefaultLocation(false);
                     safeStorage.setItem('hidayah_location', JSON.stringify({ 
                       lat: city.lat, 
@@ -244,8 +248,8 @@ export default function PrayerDetailsPage() {
                     }));
                   }}
                   className={`snap-start flex-shrink-0 px-6 py-3 rounded-2xl border transition-all active:scale-95 ${isActive 
-                    ? 'bg-hidayah-gold text-white border-hidayah-gold shadow-md shadow-hidayah-gold/20' 
-                    : 'bg-white text-hidayah-dark/60 border-hidayah-border/40 hover:border-hidayah-gold/30'}`}
+                    ? 'bg-[var(--color-hidayah-gold)] text-white border-[var(--color-hidayah-gold)] shadow-md shadow-[var(--color-hidayah-gold)]/20' 
+                    : 'bg-[var(--color-hidayah-secondary)] text-[var(--color-hidayah-dark)]/60 border-[var(--color-hidayah-border)]/40 hover:border-[var(--color-hidayah-gold)]/30'}`}
                 >
                   <span className="text-xs font-bold whitespace-nowrap tracking-wide">{city.name}</span>
                 </button>
@@ -310,7 +314,7 @@ export default function PrayerDetailsPage() {
             {!prayer.isSunrise && (
               <button 
                 onClick={() => toggleNotification(prayer.name)}
-                className={`p-3 rounded-xl transition-all ${notifications[prayer.name] ? 'bg-[var(--color-hidayah-gold)]/10 text-[var(--color-hidayah-gold)]' : 'bg-black/5 text-[var(--color-hidayah-dark)]/30'}`}
+                className={`p-3 rounded-xl transition-all ${notifications[prayer.name] ? 'bg-[var(--color-hidayah-gold)]/10 text-[var(--color-hidayah-gold)]' : 'bg-[var(--color-hidayah-dark)]/5 text-[var(--color-hidayah-dark)]/30'}`}
               >
                 {notifications[prayer.name] ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
               </button>
