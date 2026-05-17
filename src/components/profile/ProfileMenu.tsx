@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useTheme } from '../ThemeProvider';
 import { AboutUsModal } from '../AboutUsModal';
 import { HIDAYAH_API_URL, hidayahFetch } from '@/lib/api';
+import { safeStorage } from '@/lib/storage';
 
 
 
@@ -35,6 +36,8 @@ export default function ProfileMenu() {
     try {
       const res = await hidayahFetch('/api/auth/logout', { method: 'POST' });
 
+      safeStorage.removeItem('hidayah_token');
+
       if (res.ok) {
         router.push('/');
         router.refresh();
@@ -54,6 +57,7 @@ export default function ProfileMenu() {
       const res = await hidayahFetch('/api/users/profile', { method: 'DELETE' });
 
       if (res.ok) {
+        safeStorage.removeItem('hidayah_token');
         router.push('/');
         router.refresh();
       } else {

@@ -837,33 +837,34 @@ const FeedCard = memo(({
             {/* Content (Exact Match to App) */}
             <div className="space-y-12 mb-12">
               {verse && (
-                <div className="border-l-4 border-white/50 pl-10 space-y-6">
-                  <p className="font-arabic text-[64px] text-right text-white leading-relaxed" dir="rtl">
+                <div className={`border-l-4 pl-10 space-y-6 ${savedTextColor ? 'border-black/30' : 'border-white/50'}`}>
+                  <p className={`font-arabic text-[64px] text-right leading-relaxed ${savedTextColor ? '' : 'text-white'}`} style={{ color: savedTextColor || undefined }} dir="rtl">
                     {verse.text}
                   </p>
                   {verse.translation && (
-                    <p className="text-4xl italic text-white/90 leading-relaxed">
+                    <p className={`text-4xl italic leading-relaxed ${savedTextColor ? '' : 'text-white/90'}`} style={{ color: savedTextColor || undefined }}>
                       "{verse.translation}"
                     </p>
                   )}
-                  <p className="text-2xl font-bold text-white/90 uppercase tracking-widest">
+                  <p className={`text-2xl font-bold uppercase tracking-widest ${savedTextColor ? '' : 'text-white/90'}`} style={{ color: savedTextColor || undefined }}>
                     {verse.surah} • Ayah {verse.ayah}
                   </p>
                 </div>
               )}
 
               {hadith && (
-                <div className="bg-white/5 backdrop-blur-sm p-10 rounded-[48px] border border-white/10">
-                   <p className="font-arabic text-5xl text-right text-white/90 mb-6" dir="rtl">{hadith.hadithArabic}</p>
-                   <p className="text-3xl text-white/80 leading-relaxed italic">"{hadith.hadithEnglish}"</p>
-                   <p className="text-xl font-bold text-white/50 uppercase mt-4">{hadith.bookName} • {hadith.hadithNumber}</p>
+                <div className={`bg-white/5 backdrop-blur-sm p-10 rounded-[48px] border ${savedTextColor ? 'border-black/10' : 'border-white/10'}`}>
+                   <p className={`font-arabic text-5xl text-right mb-6 ${savedTextColor ? '' : 'text-white/90'}`} style={{ color: savedTextColor || undefined }} dir="rtl">{hadith.hadithArabic}</p>
+                   <p className={`text-3xl leading-relaxed italic ${savedTextColor ? '' : 'text-white/80'}`} style={{ color: savedTextColor || undefined }}>"{hadith.hadithEnglish}"</p>
+                   <p className={`text-xl font-bold uppercase mt-4 ${savedTextColor ? '' : 'text-white/50'}`} style={{ color: savedTextColor || undefined }}>{hadith.bookName} • {hadith.hadithNumber}</p>
                 </div>
               )}
 
               <p 
-                className="text-[52px] text-white leading-[1.6]" 
+                className={`text-[52px] leading-[1.6] ${savedTextColor ? '' : 'text-white'}`} 
                 style={{ 
-                  textShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  color: savedTextColor || undefined,
+                  textShadow: savedTextColor ? '1px 1px 2px rgba(0,0,0,0.2)' : '0 4px 12px rgba(0,0,0,0.3)',
                   fontFamily: 'var(--font-crimson), var(--font-serif)'
                 }}
               >

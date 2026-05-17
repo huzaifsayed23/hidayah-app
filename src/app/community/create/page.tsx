@@ -112,33 +112,40 @@ export default function CreateReflectionPage() {
   };
 
   const lookupHadith = async () => {
-    const query = hadithRef.trim();
+    let query = hadithRef.trim();
     if (!query) return;
     
+    // Remove wrapping parentheses if present
+    query = query.replace(/^\(|\)$/g, '').trim();
+
     setIsSearchingHadith(true);
     try {
-      let book = 'sahih-bukhari';
+      let book = 'bukhari';
       let num = query;
       
-      if (query.includes(':')) {
-        const [b, n] = query.split(':');
-        book = b.toLowerCase().trim();
-        num = n.trim();
+      // Match formats like "Bukhari - 5530", "tirmidhi: 2260", "muslim 123"
+      const match = query.match(/^([a-zA-Z\s\-]+?)[\s:\-]+(\d+)$/);
+      if (match) {
+        book = match[1].toLowerCase().replace(/[\s\-]/g, '');
+        num = match[2];
+      } else {
+        // If it's just a number, default to bukhari
+        num = query.replace(/\D/g, '');
       }
 
       const apiMap: any = {
-        'sahih-bukhari': 'bukhari',
-        'sahih-muslim': 'muslim',
-        'al-tirmidhi': 'tirmidhi',
-        'abu-dawood': 'abudawud',
-        'sunan-nasai': 'nasai',
-        'ibn-e-majah': 'ibnmajah',
+        'sahihbukhari': 'bukhari',
         'bukhari': 'bukhari',
+        'sahihmuslim': 'muslim',
         'muslim': 'muslim',
+        'altirmidhi': 'tirmidhi',
         'tirmidhi': 'tirmidhi',
         'abudawood': 'abudawud',
+        'abudawud': 'abudawud',
+        'sunannasai': 'nasai',
         'nasai': 'nasai',
         'ibnemajah': 'ibnmajah',
+        'ibnmajah': 'ibnmajah',
         'b': 'bukhari',
         'm': 'muslim'
       };
@@ -155,10 +162,13 @@ export default function CreateReflectionPage() {
         const enData = await enRes.json();
         
         if (arData.hadiths?.[0]) {
+          // Format book name to be nicely capitalized
+          const displayBookName = book.charAt(0).toUpperCase() + book.slice(1).replace('sahih', 'Sahih ').replace('al', 'Al-');
+
           setAttachedHadith({
             hadithArabic: arData.hadiths[0].text,
             hadithEnglish: enData.hadiths[0].text,
-            bookName: arData.metadata?.name || apiBook,
+            bookName: arData.metadata?.name || displayBookName,
             hadithNumber: arData.hadiths[0].hadithnumber,
             status: arData.hadiths[0].grades?.[0]?.grade || "Authentic"
           });
@@ -498,7 +508,7 @@ export default function CreateReflectionPage() {
                     value={hadithRef} 
                     onChange={(e) => setHadithRef(e.target.value)} 
                     onKeyDown={(e) => e.key === 'Enter' && lookupHadith()}
-                    placeholder="BOOK:NUMBER (e.g. bukhari:1)"
+                    placeholder="e.g. (Bukhari - 5530)"
                     className="flex-1 bg-transparent border-none text-[9px] sm:text-[10px] font-bold tracking-[0.2em] text-white focus:outline-none placeholder:text-white/20"
                   />
                   <button onClick={lookupHadith} className="text-[#C9A86A] p-2 hover:scale-110 transition-transform">
