@@ -166,7 +166,7 @@ export default function QuranReaderClient({ initialPage, juzNumber }: { initialP
 
               <div className="p-4 sm:p-8 lg:p-10">
                 <div 
-                  className="mushaf-layout font-arabic text-[24px] sm:text-[38px] text-center antialiased" 
+                  className="mushaf-layout font-quran text-[24px] sm:text-[38px] text-center antialiased" 
                   dir="rtl"
                 >
                   {pages[pageNum].map((verse: any, idx: number) => {
@@ -178,7 +178,7 @@ export default function QuranReaderClient({ initialPage, juzNumber }: { initialP
                       <React.Fragment key={verse.id || idx}>
                         {isNewChapter && chapter && (
                           <div className="w-full flex flex-col items-center my-4 py-3 border-y border-hidayah-border/10 bg-hidayah-secondary/5 rounded-2xl" dir="ltr">
-                            <div className="text-lg font-arabic text-hidayah-gold mb-0.5">{chapter.name_arabic}</div>
+                            <div className="text-lg font-quran text-hidayah-gold mb-0.5">{chapter.name_arabic}</div>
                             <div className="text-[7px] font-bold uppercase tracking-[0.3em] text-hidayah-dark opacity-20">{chapter.name_simple}</div>
                           </div>
                         )}
@@ -187,13 +187,13 @@ export default function QuranReaderClient({ initialPage, juzNumber }: { initialP
                           <span 
                             className={`transition-colors duration-500 hover:text-hidayah-gold ${isBookmarked ? 'text-hidayah-gold' : 'text-hidayah-dark'}`}
                           >
-                            {verse.text_indopak}
+                            {verse.text_uthmani || verse.text_indopak || verse.text || ''}
                           </span>
                           <span 
                             onClick={() => toggleBookmark(verse.verse_key, parseInt(pageNum))}
                             className="relative inline-flex items-center cursor-pointer select-none px-0.5"
                           >
-                            <span className="text-hidayah-gold/60 mx-1 font-arabic text-[20px] sm:text-[24px]">
+                            <span className="text-hidayah-gold/60 mx-1 font-quran text-[20px] sm:text-[24px]">
                               ﴾{toArabicIndic(verse.verse_key.split(':')[1])}﴿
                             </span>
                             {isBookmarked && (

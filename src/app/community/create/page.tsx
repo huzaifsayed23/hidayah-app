@@ -33,6 +33,7 @@ export default function CreateReflectionPage() {
   const [selectedTextColor, setSelectedTextColor] = useState("#FFFFFF");
   const [customImage, setCustomImage] = useState<string | null>(null);
   const [isImageLoading, setIsImageLoading] = useState(false);
+  const [is24h, setIs24h] = useState(false);
 
   
   // Verse Lookup State
@@ -232,7 +233,8 @@ export default function CreateReflectionPage() {
           userId: userId,
           textColor: selectedTextColor,
           customBackgroundImage: customImage,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          is24h: is24h
         })
       });
       if (res.ok) {
@@ -443,6 +445,39 @@ export default function CreateReflectionPage() {
                   )}
                 </div>
               </div>
+
+              {/* Reflection Type Selector */}
+              <div className="w-full mt-2 sm:mt-4">
+                <div className="px-6 sm:px-8 mb-3 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-white/10"></div>
+                  <h4 className="text-[7px] sm:text-[9px] font-bold uppercase tracking-[0.4em] text-white/60">Reflection Type</h4>
+                  <div className="h-px flex-1 bg-white/10"></div>
+                </div>
+                <div className="w-full flex justify-center gap-6 sm:gap-8 px-6 pb-4">
+                  <button
+                    onClick={() => setIs24h(false)}
+                    className={`flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-[20px] text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] transition-all border ${
+                      !is24h 
+                        ? 'bg-white text-black border-white shadow-[0_15px_30px_-5px_rgba(255,255,255,0.3)] scale-105' 
+                        : 'bg-white/5 text-white/30 border-white/5 hover:bg-white/10'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${!is24h ? 'bg-black' : 'bg-white/30'}`} />
+                    Permanent Reflection
+                  </button>
+                  <button
+                    onClick={() => setIs24h(true)}
+                    className={`flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-[20px] text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] transition-all border ${
+                      is24h 
+                        ? 'bg-white text-black border-white shadow-[0_15px_30px_-5px_rgba(255,255,255,0.3)] scale-105' 
+                        : 'bg-white/5 text-white/30 border-white/5 hover:bg-white/10'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${is24h ? 'bg-black' : 'bg-white/30'}`} />
+                    24h Reflection
+                  </button>
+                </div>
+              </div>
             </section>
 
 
@@ -537,7 +572,7 @@ export default function CreateReflectionPage() {
                 <div className="relative z-10 w-full h-full">
                  {attachedVerse && (
                   <div className="mb-6 sm:mb-8 p-3 sm:p-5 relative animate-in zoom-in-95 duration-500 border-l-2 border-white/30 pl-4 sm:pl-6">
-                    <p className="font-arabic text-right text-lg sm:text-xl mb-2" dir="rtl" style={{ color: selectedTextColor }}>{attachedVerse.text}</p>
+                    <p className="font-quran text-right text-lg sm:text-xl mb-2" dir="rtl" style={{ color: selectedTextColor }}>{attachedVerse.text}</p>
                     <p className="text-[10px] sm:text-xs italic leading-relaxed mb-2" style={{ color: selectedTextColor, opacity: 0.8 }}>"{attachedVerse.translation}"</p>
                     <div className="flex items-center justify-between">
                       <p className="text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.3em]" style={{ color: selectedTextColor }}>{attachedVerse.surah} • Ayah {attachedVerse.ayah}</p>

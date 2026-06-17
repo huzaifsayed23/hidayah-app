@@ -18,6 +18,7 @@ interface HadithCardProps {
   transparent?: boolean;
   customTextColor?: string | null;
   onShare?: (hadith: any) => void;
+  preview?: boolean;
 }
 
 export default function HadithCard({ 
@@ -25,7 +26,8 @@ export default function HadithCard({
   isLightText = false, 
   transparent = false, 
   customTextColor = null,
-  onShare
+  onShare,
+  preview = false
 }: HadithCardProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,34 +89,38 @@ export default function HadithCard({
       <div className={`absolute inset-0 bg-gradient-to-br ${isLightText ? 'from-white/10' : 'from-white/30'} to-transparent pointer-events-none`} />
 
       {/* Header: Source Citation */}
-      <header className="mb-6 flex justify-between items-start">
+      <header className={`${preview ? 'mb-3' : 'mb-6'} flex justify-between items-start`}>
         <p className={`text-[10px] sm:text-xs font-serif italic tracking-[0.2em] uppercase ${textMuted}`}>
           {hadith.bookName} • {hadith.hadithNumber}
         </p>
         
-        <div className="flex gap-2 relative z-10">
-          <button 
-            onClick={handleSave}
-            disabled={isSaving}
-            className={`p-2 rounded-full transition-all ${isSaved ? 'bg-hidayah-gold text-white' : 'bg-black/5 hover:bg-black/10 text-hidayah-dark'}`}
-          >
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />}
-          </button>
-          <button 
-            onClick={() => onShare && onShare(hadith)}
-            className="p-2 rounded-full bg-black/5 hover:bg-black/10 text-hidayah-dark transition-all"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-        </div>
+        {!preview && (
+          <div className="flex gap-2 relative z-10">
+            <button 
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`p-2 rounded-full transition-all ${isSaved ? 'bg-hidayah-gold text-white' : 'bg-black/5 hover:bg-black/10 text-hidayah-dark'}`}
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />}
+            </button>
+            <button 
+              onClick={() => onShare && onShare(hadith)}
+              className="p-2 rounded-full bg-black/5 hover:bg-black/10 text-hidayah-dark transition-all"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Content Area */}
-      <div className="space-y-6">
+      <div className={preview ? "space-y-3" : "space-y-6"}>
         {/* Arabic Content */}
-        <div>
+        <div className="relative">
           <p 
-            className={`font-arabic text-lg sm:text-xl md:text-2xl text-center allow-select ${customTextColor ? '' : textColor}`} 
+            className={`font-arabic text-center allow-select ${customTextColor ? '' : textColor} ${
+              preview ? 'text-base sm:text-lg md:text-xl line-clamp-4' : 'text-lg sm:text-xl md:text-2xl'
+            }`} 
             style={shineStyle}
             dir="rtl"
           >
@@ -123,9 +129,11 @@ export default function HadithCard({
         </div>
 
         {/* Translation Content */}
-        <div className="pr-2 touch-auto">
+        <div className="relative pr-2 touch-auto">
           <p 
-            className={`font-serif text-sm sm:text-base md:text-lg leading-[1.6] allow-select ${customTextColor ? '' : (isLightText ? 'text-white/80' : 'text-[var(--color-hidayah-dark)]/80')} text-justify pb-2`}
+            className={`font-serif leading-[1.6] allow-select ${customTextColor ? '' : (isLightText ? 'text-white/80' : 'text-[var(--color-hidayah-dark)]/80')} text-justify pb-2 ${
+              preview ? 'text-xs sm:text-sm line-clamp-2' : 'text-sm sm:text-base md:text-lg'
+            }`}
             style={shineStyle}
           >
             {hadith.hadithEnglish}
@@ -134,7 +142,7 @@ export default function HadithCard({
       </div>
 
       {/* Footer: Grading Badge */}
-      <footer className="mt-6 flex items-center justify-between">
+      <footer className={`${preview ? 'mt-3' : 'mt-6'} flex items-center justify-between`}>
         <div className={`px-4 py-1.5 rounded-full bg-[var(--color-hidayah-gold)] ${isLightText ? 'text-white' : 'text-[var(--color-hidayah-primary)]'} text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-gold/20`}>
           {hadith.status}
         </div>

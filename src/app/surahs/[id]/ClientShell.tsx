@@ -104,15 +104,15 @@ export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: s
 
       <div className="max-w-4xl mx-auto px-6 py-12">
         <div className="text-center mb-16">
-          <span className="text-5xl font-arabic block mb-4">{chapter.name_arabic}</span>
+          <span className="text-5xl font-quran block mb-4">{chapter.name_arabic}</span>
           <span className="text-sm tracking-widest text-hidayah-gold uppercase font-medium">{chapter.translated_name.name}</span>
         </div>
 
         <div className="flex flex-col gap-10">
           {verses.map((verse) => (
             <div key={verse.id} className="bg-[var(--color-hidayah-secondary)] p-6 rounded-[32px] border border-hidayah-border/40 shadow-sm">
-              <div className="text-right font-arabic mushaf-layout mb-6" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
-                {verse.text_indopak} <span className="text-hidayah-gold mx-1 font-arabic">﴾{toArabicIndic(verse.verse_key.split(":")[1])}﴿</span>
+              <div className="text-right font-quran mushaf-layout mb-6" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
+                {verse.text_uthmani || verse.text_indopak || verse.text || ''} <span className="text-hidayah-gold mx-1 font-quran">﴾{toArabicIndic(verse.verse_key.split(":")[1])}﴿</span>
               </div>
               <div className="text-[var(--color-hidayah-dark)] text-sm leading-relaxed border-l-2 border-hidayah-gold/30 pl-4 opacity-70">
                 {verse.translations?.[0]?.text.replace(/<[^>]*>/g, "") || "Translation unavailable"}

@@ -7,6 +7,7 @@ import UserSearchResult from './UserSearchResult';
 import Link from 'next/link';
 import { Users, BookOpen } from 'lucide-react';
 import { hidayahFetch } from '@/lib/api';
+import StoriesRow from './StoriesRow';
 
 interface CommunityFeedProps {
   initialPosts: any[];
@@ -65,6 +66,11 @@ export default function CommunityFeed({ initialPosts, userName, currentUserId, m
         userName={userName} 
         onSearch={setSearchQuery} 
       />
+
+      {/* 24h Reflections Story Row */}
+      {!(searchQuery.length > 0 && activeTab === 'users') && (
+        <StoriesRow />
+      )}
 
       {/* Welcome Statement (Hidden when searching members) */}
       {!(searchQuery.length > 0 && activeTab === 'users') && (

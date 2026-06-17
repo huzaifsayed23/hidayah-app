@@ -12,6 +12,37 @@ export default function MountedGuard({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     setMounted(true);
+
+    let backButtonListener: any = null;
+
+    const setupBackButton = async () => {
+      try {
+        const { App } = await import('@capacitor/app');
+        backButtonListener = await App.addListener('backButton', () => {
+          const pathname = window.location.pathname;
+          
+          // Pages where pressing native back should exit the app
+          const rootPages = ['/', '/community', '/dashboard', '/auth', '/onboarding', '/agreement'];
+          
+          if (rootPages.includes(pathname)) {
+            App.exitApp();
+          } else {
+            window.history.back();
+          }
+        });
+      } catch (e) {
+        // Safe to ignore if not running inside native mobile webview
+        console.log('Capacitor App back button handler not enabled:', e);
+      }
+    };
+
+    setupBackButton();
+
+    return () => {
+      if (backButtonListener) {
+        backButtonListener.remove();
+      }
+    };
   }, []);
 
   if (!mounted) {

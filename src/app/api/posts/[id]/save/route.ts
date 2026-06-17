@@ -47,6 +47,15 @@ export async function POST(
       return NextResponse.json({ message: 'Valid Post ID is required' }, { status: 400, headers: corsHeaders });
     }
 
+    const Post = (await import('@/models/Post')).default;
+    const postObj = await Post.findById(postId);
+    if (!postObj) {
+      return NextResponse.json({ message: 'Post not found' }, { status: 404, headers: corsHeaders });
+    }
+    if (postObj.is24h) {
+      return NextResponse.json({ message: '24h Reflections cannot be saved permanently' }, { status: 400, headers: corsHeaders });
+    }
+
     const userData = await User.findById(userId);
     if (!userData) {
       return NextResponse.json({ message: 'User not found' }, { status: 404, headers: corsHeaders });

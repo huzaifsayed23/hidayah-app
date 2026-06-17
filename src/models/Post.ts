@@ -69,15 +69,34 @@ const PostSchema = new Schema({
   replies: [{
     author: String,
     content: String,
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    likes: { type: [String], default: [] },
+    parentId: { type: String, default: null },
+    reports: { type: [String], default: [] }
   }],
   isVisible: {
     type: Boolean,
     default: true,
   },
+  viewers: [{
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    username: String,
+    userImage: String,
+    viewedAt: { type: Date, default: Date.now }
+  }],
   reportCount: {
     type: Number,
     default: 0,
+  },
+  is24h: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+  expiresAt: {
+    type: Date,
+    default: null,
+    index: true,
   },
   createdAt: {
     type: Date,
@@ -88,6 +107,7 @@ const PostSchema = new Schema({
 
 PostSchema.index({ userId: 1, createdAt: -1 });
 PostSchema.index({ isVisible: 1, createdAt: -1 });
+PostSchema.index({ is24h: 1, expiresAt: 1 });
 
 
 // Delete the existing model to ensure schema changes are applied during hot-reload

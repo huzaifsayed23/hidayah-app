@@ -99,7 +99,7 @@ export default function SurahListPage() {
                       <h3 className="text-[11px] sm:text-[13px] font-bold text-hidayah-dark truncate leading-tight">
                         {chapter.name_simple}
                       </h3>
-                      <div className="text-sm sm:text-base font-arabic text-[var(--color-hidayah-dark)] group-hover:text-hidayah-gold transition-colors my-0.5">
+                      <div className="text-sm sm:text-base font-quran text-[var(--color-hidayah-dark)] group-hover:text-hidayah-gold transition-colors my-0.5">
                         {chapter.name_arabic}
                       </div>
                       <div className="flex flex-col items-center gap-0.5 text-[8px] sm:text-[10px] text-[var(--color-hidayah-dark)]/40">

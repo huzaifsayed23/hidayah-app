@@ -19,6 +19,48 @@ export async function OPTIONS() {
   });
 }
 
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await dbConnect();
+    const { id: postId } = await params;
+
+    const post = await Post.findById(postId).lean() as any;
+    if (!post) {
+      return NextResponse.json({ message: 'Post not found' }, { 
+        status: 404,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    const authUser = await getAuthUser();
+    const currentUserId = authUser?.userId || authUser?.id;
+
+    let isSaved = false;
+    if (currentUserId) {
+      const User = (await import('@/models/User')).default;
+      const user = await User.findById(currentUserId).select('savedPosts');
+      if (user && user.savedPosts) {
+        isSaved = user.savedPosts.map((id: any) => id.toString()).includes(post._id.toString());
+      }
+    }
+
+    return NextResponse.json({ post: { ...post, isSaved } }, { 
+      status: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
+  } catch (error) {
+    console.error('Error fetching post:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { 
+      status: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
+  }
+}
+
+
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }

@@ -188,7 +188,7 @@ export default function QuranPage() {
                     <span className="text-[10px] font-medium opacity-40">{new Date(b.addedAt).toLocaleDateString()}</span>
                   </div>
                   <div className="text-right">
-                    <p className="font-arabic text-xl text-hidayah-dark">Verse {b.verseKey}</p>
+                    <p className="font-quran text-xl text-hidayah-dark">Verse {b.verseKey}</p>
                   </div>
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-hidayah-border)]/10">
                     <span className="text-xs font-medium text-hidayah-dark/60 italic">Continue to Page {b.pageNumber}</span>

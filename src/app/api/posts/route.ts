@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     const authUser = await getAuthUser();
     const currentUserId = authUser?.userId || authUser?.id;
 
-    const query: any = { isVisible: { $ne: false } };
+    const query: any = { isVisible: { $ne: false }, is24h: { $ne: true } };
     if (userId && tab !== 'saved') {
       query.userId = userId;
     }
@@ -101,6 +101,9 @@ export async function POST(req: Request) {
       authorName = userDoc?.email ? userDoc.email.split('@')[0] : 'User';
     }
 
+    const is24h = body.is24h || false;
+    const expiresAt = is24h ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null;
+
     const newPost = await Post.create({
       userId: user.userId,
       authorName: authorName,
@@ -114,6 +117,8 @@ export async function POST(req: Request) {
       reflectionThemeId: body.reflectionThemeId || null,
       textColor: body.textColor || null,
       customBackgroundImage: body.customBackgroundImage || null,
+      is24h,
+      expiresAt,
     });
 
     return NextResponse.json({ post: newPost }, { status: 201 });

@@ -57,7 +57,7 @@ export default function InteractiveVerse({ verse, initialIsBookmarked, children,
       >
         {children}
       </span>
-      <span className="inline-flex items-center justify-center mx-2 text-hidayah-gold text-xl sm:text-2xl font-arabic relative group select-none">
+      <span className="inline-flex items-center justify-center mx-2 text-hidayah-gold text-xl sm:text-2xl font-quran relative group select-none">
         ﴾{toArabicIndic(verseNum)}﴿
         <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white px-2 py-1 rounded-lg shadow-sm border border-hidayah-border/20 z-20">
           <BookmarkButton verse={verse} initialIsBookmarked={isBookmarked} />

@@ -207,13 +207,25 @@
     text-shadow: 0.1px 0.1px 0.2px rgba(0,0,0,0.05);
   }
 
+  .font-quran {
+    font-family: var(--font-scheherazade), var(--font-noto-naskh), serif;
+    font-weight: 400;
+    line-height: 2.1; 
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0;
+    word-spacing: 0.15em;
+    font-feature-settings: "cv01" 1, "cv02" 1, "cv03" 1, "cv04" 1, "cv05" 1, "cv06" 1, "cv07" 1, "cv08" 1, "cv09" 1, "cv10" 1, "calt" 1, "liga" 1;
+    text-shadow: 0.1px 0.1px 0.2px rgba(0,0,0,0.05);
+  }
+
   /* Traditional Mushaf Layout Utility */
   .mushaf-layout {
     text-align: justify;
     text-justify: inter-word;
-    line-height: 1.6; /* Increased for better legibility and 'no half cut' feel */
-    font-family: var(--font-arabic);
-    word-spacing: 0.1em;
+    line-height: 2.1; /* Improved for better mobile readability */
+    font-family: var(--font-scheherazade), var(--font-noto-naskh), serif;
+    word-spacing: 0.15em;
     text-rendering: optimizeLegibility;
     display: block;
     margin: 0 auto;

@@ -59,20 +59,17 @@ async function performCommentDeletion(postId: string, replyId: string) {
 
     const reply = post.replies[replyIndex];
     
-    // Safety check author
+    // Safety check author (only the comment creator or admins can delete)
     const authorStr = String(reply.author || "").toLowerCase().trim();
     const cleanAuthor = authorStr.startsWith('@') ? authorStr.substring(1) : authorStr;
     
     const currentUsername = String(user.username || "").toLowerCase().trim();
-    const currentUserId = String(user.userId || user.id || "").trim();
-    const postOwnerId = String(post.userId || "").trim();
     const userEmail = String(user.email || "").toLowerCase();
 
     const isAuthor = cleanAuthor !== "" && currentUsername !== "" && cleanAuthor === currentUsername;
-    const isOwner = postOwnerId !== "" && currentUserId !== "" && postOwnerId === currentUserId;
-    const isGlobalAdmin = ['huzaifsayed454@gmail.com', 'huzaifsayed23@gmail.com'].includes(userEmail);
+    const isGlobalAdmin = ['huzaifsayed454@gmail.com', 'huzaifsayed23@gmail.com'].includes(userEmail) || (user && user.isAdmin);
 
-    if (!isAuthor && !isOwner && !isGlobalAdmin) {
+    if (!isAuthor && !isGlobalAdmin) {
       return NextResponse.json({ message: 'You do not have permission to delete this comment' }, { status: 403, headers: corsHeaders });
     }
 
@@ -103,6 +100,111 @@ async function performCommentDeletion(postId: string, replyId: string) {
   }
 }
 
+/**
+ * Handles liking/unliking comments
+ */
+async function performCommentLike(postId: string, replyId: string) {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept'
+  };
+
+  try {
+    const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to like comments' }, { status: 401, headers: corsHeaders });
+    }
+
+    await dbConnect();
+    const post = await Post.findById(postId);
+    if (!post) {
+      return NextResponse.json({ message: 'Post not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    const reply = post.replies.find((r: any) => (r._id || r.id || "").toString() === replyId);
+    if (!reply) {
+      return NextResponse.json({ message: 'Comment not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    const username = (user.username || user.email.split('@')[0]).replace(/^@/, '').trim().toLowerCase();
+    
+    if (!reply.likes) reply.likes = [];
+    const index = reply.likes.indexOf(username);
+    
+    if (index === -1) {
+      await Post.updateOne(
+        { _id: postId, "replies._id": replyId },
+        { $addToSet: { "replies.$.likes": username } }
+      );
+      reply.likes.push(username);
+    } else {
+      await Post.updateOne(
+        { _id: postId, "replies._id": replyId },
+        { $pull: { "replies.$.likes": username } }
+      );
+      reply.likes.splice(index, 1);
+    }
+
+    return NextResponse.json({ 
+      message: 'Comment like toggled', 
+      likes: reply.likes 
+    }, { status: 200, headers: corsHeaders });
+
+  } catch (error: any) {
+    console.error('Comment Like Error:', error);
+    return NextResponse.json({ 
+      message: `Server Error: ${error.message || 'Unknown'}` 
+    }, { status: 500, headers: corsHeaders });
+  }
+}
+
+/**
+ * Handles reporting comments
+ */
+async function performCommentReport(postId: string, replyId: string) {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept'
+  };
+
+  try {
+    const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to report comments' }, { status: 401, headers: corsHeaders });
+    }
+
+    await dbConnect();
+    const post = await Post.findById(postId);
+    if (!post) {
+      return NextResponse.json({ message: 'Post not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    const reply = post.replies.find((r: any) => (r._id || r.id || "").toString() === replyId);
+    if (!reply) {
+      return NextResponse.json({ message: 'Comment not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    const username = (user.username || user.email.split('@')[0]).replace(/^@/, '').trim().toLowerCase();
+    
+    await Post.updateOne(
+      { _id: postId, "replies._id": replyId },
+      { $addToSet: { "replies.$.reports": username } }
+    );
+
+    return NextResponse.json({ 
+      message: 'Comment reported successfully'
+    }, { status: 200, headers: corsHeaders });
+
+  } catch (error: any) {
+    console.error('Comment Report Error:', error);
+    return NextResponse.json({ 
+      message: `Server Error: ${error.message || 'Unknown'}` 
+    }, { status: 500, headers: corsHeaders });
+  }
+}
+
 export async function POST(
   req: Request,
   { params }: { params: any }
@@ -111,23 +213,29 @@ export async function POST(
     const resolvedParams = await params;
     const postId = resolvedParams.id;
     
-    // 1. Check for deletion fallback
     const url = new URL(req.url, 'http://localhost');
     const replyId = url.searchParams.get('replyId');
-    const isDelete = url.searchParams.get('action') === 'delete';
+    const action = url.searchParams.get('action');
     
-    if (isDelete && replyId) {
+    // 1. Check for action fallbacks
+    if (action === 'delete' && replyId) {
       return performCommentDeletion(postId, replyId);
     }
+    if (action === 'like' && replyId) {
+      return performCommentLike(postId, replyId);
+    }
+    if (action === 'report' && replyId) {
+      return performCommentReport(postId, replyId);
+    }
 
-    // 2. Standard reply creation
+    // 2. Standard reply/comment creation
     const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
 
     const body = await req.json();
-    const { content } = body;
+    const { content, parentId } = body;
     if (!content?.trim()) {
       return NextResponse.json({ message: 'Content is required' }, { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
@@ -142,20 +250,30 @@ export async function POST(
     const newReply = {
       author: authorName,
       content: content.trim(),
-      createdAt: new Date()
+      createdAt: new Date(),
+      likes: [],
+      parentId: parentId || null
     };
 
-    if (!post.replies) (post as any).replies = [];
-    post.replies.push(newReply as any);
-    post.commentCount = post.replies.length;
-    await post.save();
+    const updatedPost = await Post.findByIdAndUpdate(
+      postId,
+      {
+        $push: { replies: newReply as any },
+        $inc: { commentCount: 1 }
+      },
+      { new: true }
+    );
+
+    if (!updatedPost) {
+      return NextResponse.json({ message: 'Failed to update post' }, { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } });
+    }
 
     // Get the newly added reply with its database-generated _id
-    const savedReply = post.replies[post.replies.length - 1];
+    const savedReply = updatedPost.replies[updatedPost.replies.length - 1];
 
     return NextResponse.json({ 
       reply: savedReply,
-      commentCount: post.commentCount
+      commentCount: updatedPost.commentCount
     }, { status: 200, headers: { 'Access-Control-Allow-Origin': '*' } });
 
   } catch (error: any) {
@@ -185,11 +303,18 @@ export async function GET(
   const postId = resolvedParams.id;
   const url = new URL(req.url, 'http://localhost');
   const replyId = url.searchParams.get('replyId');
-  const isDelete = url.searchParams.get('action') === 'delete';
+  const action = url.searchParams.get('action');
   
-  if (isDelete && replyId) {
+  if (action === 'delete' && replyId) {
     return performCommentDeletion(postId, replyId);
+  }
+  if (action === 'like' && replyId) {
+    return performCommentLike(postId, replyId);
+  }
+  if (action === 'report' && replyId) {
+    return performCommentReport(postId, replyId);
   }
 
   return NextResponse.json({ message: 'Method Not Allowed' }, { status: 405 });
 }
+

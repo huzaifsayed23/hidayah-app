@@ -219,7 +219,9 @@ export interface Chapter {
 export interface Verse {
   id: number;
   verse_key: string;
-  text_indopak: string;
+  text_uthmani: string;
+  text_indopak?: string;
+  text?: string;
   page_number: number;
   translations?: { text: string }[];
 }
@@ -239,14 +241,14 @@ export async function getChapters(): Promise<Chapter[]> {
 export async function getVersesByPage(page: number): Promise<Verse[]> {
   try {
     // Attempt 1: QDC API (Official)
-    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_page/${page}?words=false&fields=text_indopak&per_page=50`);
+    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_page/${page}?words=false&fields=text_uthmani&per_page=50`);
     if (res.ok) {
       const data = await res.json();
       if (data.verses && data.verses.length > 0) return data.verses.map((v: any) => ({ ...v, page_number: v.page_number || page }));
     }
     
     // Fallback attempt: QDC API v4
-    const v4Res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_page/${page}?words=false&fields=text_indopak&per_page=50`);
+    const v4Res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_page/${page}?words=false&fields=text_uthmani&per_page=50`);
     if (v4Res.ok) {
       const v4Data = await v4Res.json();
       if (v4Data.verses && v4Data.verses.length > 0) return v4Data.verses.map((v: any) => ({ ...v, page_number: v.page_number || page }));
@@ -257,14 +259,14 @@ export async function getVersesByPage(page: number): Promise<Verse[]> {
     console.warn("QDC failed, trying AlQuran Cloud for page", page);
     try {
       // Attempt 2: AlQuran Cloud (Fallback)
-      const arRes = await hidayahFetch(`https://api.alquran.cloud/v1/page/${page}/quran-indopak`);
+      const arRes = await hidayahFetch(`https://api.alquran.cloud/v1/page/${page}/quran-uthmani`);
       const arData = await arRes.json();
       
       if (arData.data && arData.data.ayahs) {
         return arData.data.ayahs.map((ayah: any) => ({
           id: ayah.number,
           verse_key: `${ayah.surah.number}:${ayah.numberInSurah}`,
-          text_indopak: ayah.text,
+          text_uthmani: ayah.text,
           page_number: page
         }));
       }
@@ -277,13 +279,13 @@ export async function getVersesByPage(page: number): Promise<Verse[]> {
 
 export async function getVersesByJuz(juz: number): Promise<Verse[]> {
   try {
-    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_juz/${juz}?words=false&fields=text_indopak&per_page=500`);
+    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_juz/${juz}?words=false&fields=text_uthmani&per_page=500`);
     if (res.ok) {
       const data = await res.json();
       if (data.verses && data.verses.length > 0) return data.verses;
     }
     
-    const v4Res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_juz/${juz}?words=false&fields=text_indopak&per_page=500`);
+    const v4Res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_juz/${juz}?words=false&fields=text_uthmani&per_page=500`);
     if (v4Res.ok) {
       const v4Data = await v4Res.json();
       if (v4Data.verses && v4Data.verses.length > 0) return v4Data.verses;
@@ -293,13 +295,13 @@ export async function getVersesByJuz(juz: number): Promise<Verse[]> {
   } catch (error) {
     console.warn("Falling back to AlQuran Cloud for juz", juz);
     try {
-      const arRes = await hidayahFetch(`https://api.alquran.cloud/v1/juz/${juz}/quran-indopak`);
+      const arRes = await hidayahFetch(`https://api.alquran.cloud/v1/juz/${juz}/quran-uthmani`);
       const arData = await arRes.json();
       if (arData.data && arData.data.ayahs) {
         return arData.data.ayahs.map((ayah: any) => ({
           id: ayah.number,
           verse_key: `${ayah.surah.number}:${ayah.numberInSurah}`,
-          text_indopak: ayah.text,
+          text_uthmani: ayah.text,
           page_number: ayah.page
         }));
       }
@@ -312,7 +314,7 @@ export async function getVersesByJuz(juz: number): Promise<Verse[]> {
 
 export async function getVersesByChapter(chapterId: number): Promise<Verse[]> {
   try {
-    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_chapter/${chapterId}?words=false&translations=131,20&fields=text_indopak&per_page=500`);
+    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_chapter/${chapterId}?words=false&translations=131,20&fields=text_uthmani&per_page=500`);
     if (res.ok) {
       const data = await res.json();
       if (data.verses && data.verses.length > 0) return data.verses;
@@ -321,13 +323,13 @@ export async function getVersesByChapter(chapterId: number): Promise<Verse[]> {
   } catch (error) {
     console.warn("Falling back to AlQuran Cloud for chapter", chapterId);
     try {
-      const arRes = await hidayahFetch(`https://api.alquran.cloud/v1/surah/${chapterId}/quran-indopak`);
+      const arRes = await hidayahFetch(`https://api.alquran.cloud/v1/surah/${chapterId}/quran-uthmani`);
       const arData = await arRes.json();
       if (arData.data && arData.data.ayahs) {
         return arData.data.ayahs.map((ayah: any) => ({
           id: ayah.number,
           verse_key: `${chapterId}:${ayah.numberInSurah}`,
-          text_indopak: ayah.text
+          text_uthmani: ayah.text
         }));
       }
     } catch (fallbackError) {
