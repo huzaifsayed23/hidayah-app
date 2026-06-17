@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Loader2, ArrowRight, Sparkles, User, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight, Sparkles, User, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { hidayahFetch } from '@/lib/api';
 import { safeStorage } from '@/lib/storage';
@@ -15,6 +15,7 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const token = safeStorage.getItem("hidayah_token");
@@ -126,13 +127,20 @@ export default function AuthPage() {
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-hidayah-dark/20" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-hidayah-primary/50 border border-transparent focus:border-hidayah-gold transition-all outline-none"
+                className="w-full pl-12 pr-12 py-4 rounded-2xl bg-hidayah-primary/50 border border-transparent focus:border-hidayah-gold transition-all outline-none"
                 placeholder="••••••••"
               />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-hidayah-dark/30 hover:text-hidayah-gold transition-colors focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 

@@ -391,7 +391,7 @@ export default function StoriesRow() {
                     </div>
                   )}
 
-                  <div className="relative z-10 space-y-6 flex-1 flex flex-col justify-center">
+                  <div className="relative z-10 space-y-6 flex-1 flex flex-col justify-start overflow-y-auto hide-scrollbar pt-6 sm:pt-8 pb-4">
                     {/* Verse attachment */}
                     {activeStory.verse && (
                       <div className="border-l-2 border-white/30 pl-4 py-1.5 animate-in fade-in slide-in-from-left-2 duration-500">
