@@ -92,7 +92,7 @@ export default function AuthPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {!isLogin && (
             <div className="space-y-2">
-              <label className="text-xs font-bold text-hidayah-dark/40 uppercase tracking-widest ml-2">Full Name</label>
+              <label className="text-xs font-bold text-hidayah-dark/40 uppercase tracking-widest ml-2">Username</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-hidayah-dark/20" />
                 <input
@@ -101,7 +101,7 @@ export default function AuthPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 rounded-2xl bg-hidayah-primary/50 border border-transparent focus:border-hidayah-gold transition-all outline-none"
-                  placeholder="Enter your name"
+                  placeholder="Enter a username"
                 />
               </div>
             </div>

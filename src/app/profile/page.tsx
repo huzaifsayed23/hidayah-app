@@ -30,7 +30,10 @@ function ProfileContent() {
   const [error, setError] = useState("");
 
   const fetchData = async () => {
-    const targetUser = searchParams.get('u');
+    let targetUser = searchParams.get('u');
+    if (targetUser && targetUser.startsWith('@')) {
+      targetUser = targetUser.substring(1);
+    }
     const tabFromUrl = searchParams.get('tab') || 'posts';
     
     const token = typeof window !== 'undefined' ? localStorage.getItem('hidayah_token') : null;
