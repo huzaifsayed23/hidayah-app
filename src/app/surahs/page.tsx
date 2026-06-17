@@ -88,7 +88,10 @@ export default function SurahListPage() {
                   transition={{ duration: 0.3, delay: index * 0.02 }}
                 >
                   <div
-                    onClick={() => router.push(`/surahs/${chapter.id}`)}
+                    onPointerDown={(e) => {
+                      e.preventDefault(); // Prevent keyboard from closing before route starts
+                      router.push(`/surahs/${chapter.id}`);
+                    }}
                     className="group flex flex-col items-center gap-1.5 p-2 sm:p-3 bg-[var(--color-hidayah-secondary)] rounded-[20px] border border-hidayah-border/30 shadow-sm hover:shadow-lg hover:shadow-hidayah-gold/5 transition-all duration-300 text-center h-full cursor-pointer"
                   >
                     {/* Number Box - Made smaller */}
