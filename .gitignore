@@ -42,3 +42,4 @@ next-env.d.ts
 
 # Firebase
 firebase-admin.json
+android/app/google-services.json
