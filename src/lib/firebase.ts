@@ -11,7 +11,8 @@ if (!admin.apps.length) {
     // Check if we are running locally and have the file
     const localKeyPath = path.join(process.cwd(), 'firebase-admin.json');
     if (fs.existsSync(localKeyPath)) {
-      credential = admin.credential.cert(require(localKeyPath));
+      const fileContent = fs.readFileSync(localKeyPath, 'utf8');
+      credential = admin.credential.cert(JSON.parse(fileContent));
     } else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
       // Use environment variables for Vercel production
       credential = admin.credential.cert({
