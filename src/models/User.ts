@@ -84,6 +84,9 @@ const UserSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Circle'
   }],
+  fcmTokens: [{
+    type: String,
+  }],
   createdAt: {
     type: Date,
     default: Date.now,

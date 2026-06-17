@@ -253,7 +253,7 @@ export async function POST(
         const otherMembers = circle.members.filter((m: any) => m.toString() !== user.userId.toString());
         
         if (otherMembers.length > 0) {
-          // Prepare notification data
+          // Prepare in-app notification data
           const notificationData = otherMembers.map((memberId: any) => ({
             recipientId: memberId,
             senderId: user.userId,
@@ -266,6 +266,64 @@ export async function POST(
 
           // Bulk insert for efficiency
           await Notification.insertMany(notificationData, { ordered: false }).catch(e => console.error("Notification bulk insert error:", e));
+
+          // ----------------------------------------------------
+          // FIREBASE PUSH NOTIFICATIONS
+          // ----------------------------------------------------
+          try {
+            const { messaging } = await import('@/lib/firebase');
+            if (messaging) {
+              // Fetch users who have FCM tokens and have NOT muted this circle
+              const membersToNotify = await User.find({
+                _id: { $in: otherMembers },
+                fcmTokens: { $exists: true, $not: { $size: 0 } },
+                mutedCircles: { $ne: circleId }
+              }).select('fcmTokens');
+
+              const tokens: string[] = [];
+              membersToNotify.forEach(member => {
+                if (member.fcmTokens) {
+                  tokens.push(...member.fcmTokens);
+                }
+              });
+
+              if (tokens.length > 0) {
+                // Remove duplicates just in case
+                const uniqueTokens = [...new Set(tokens)];
+                
+                const messageText = text ? (text.length > 100 ? text.substring(0, 97) + '...' : text) : (imageUrl ? "📷 Image" : "📁 File");
+                
+                await messaging.sendEachForMulticast({
+                  tokens: uniqueTokens,
+                  notification: {
+                    title: `New message in ${circle.title}`,
+                    body: `${formattedMessage.senderName}: ${messageText}`,
+                  },
+                  data: {
+                    route: `/community/chat/${circle.slug || circleId}`
+                  },
+                  android: {
+                    priority: 'high',
+                    notification: {
+                      sound: 'default',
+                      channelId: 'messages'
+                    }
+                  },
+                  apns: {
+                    payload: {
+                      aps: {
+                        sound: 'default',
+                        badge: 1
+                      }
+                    }
+                  }
+                });
+                console.log(`Pushed to ${uniqueTokens.length} devices.`);
+              }
+            }
+          } catch (fcmErr) {
+            console.error("Firebase Cloud Messaging Error:", fcmErr);
+          }
         }
       }
     } catch (e) {

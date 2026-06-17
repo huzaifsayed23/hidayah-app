@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import MountedGuard from "@/components/MountedGuard";
 import BottomNav from "@/components/BottomNav";
+import PushNotificationSetup from "@/components/PushNotificationSetup";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -120,6 +121,7 @@ export default function RootLayout({
       <body className={`${outfit.variable} ${amiriQuran.variable} ${scheherazade.variable} ${playfair.variable} ${crimson.variable} ${notoArabic.variable} ${notoNaskh.variable} ${lateef.variable} ${gulzar.variable} font-sans antialiased`}>
         <MountedGuard>
           <ThemeProvider>
+            <PushNotificationSetup />
             {children}
           </ThemeProvider>
         </MountedGuard>
