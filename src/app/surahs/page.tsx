@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, BookOpen, ArrowLeft, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { getChapters, Chapter } from "@/lib/api";
 
 export default function SurahListPage() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     async function loadChapters() {
@@ -85,9 +87,9 @@ export default function SurahListPage() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.3, delay: index * 0.02 }}
                 >
-                  <Link
-                    href={`/surahs/${chapter.id}`}
-                    className="group flex flex-col items-center gap-1.5 p-2 sm:p-3 bg-[var(--color-hidayah-secondary)] rounded-[20px] border border-hidayah-border/30 shadow-sm hover:shadow-lg hover:shadow-hidayah-gold/5 transition-all duration-300 text-center h-full"
+                  <div
+                    onClick={() => router.push(`/surahs/${chapter.id}`)}
+                    className="group flex flex-col items-center gap-1.5 p-2 sm:p-3 bg-[var(--color-hidayah-secondary)] rounded-[20px] border border-hidayah-border/30 shadow-sm hover:shadow-lg hover:shadow-hidayah-gold/5 transition-all duration-300 text-center h-full cursor-pointer"
                   >
                     {/* Number Box - Made smaller */}
                     <div className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center rounded-lg bg-[var(--color-hidayah-primary)] border border-hidayah-border/30 text-hidayah-gold font-serif font-bold group-hover:bg-hidayah-gold group-hover:text-[var(--color-hidayah-primary)] transition-colors duration-300 text-[10px]">
@@ -95,7 +97,7 @@ export default function SurahListPage() {
                     </div>
                     
                     {/* Names and Info - Tightened spacing */}
-                    <div className="flex-1 min-w-0 w-full">
+                    <div className="flex-1 min-w-0 w-full pointer-events-none">
                       <h3 className="text-[11px] sm:text-[13px] font-bold text-hidayah-dark truncate leading-tight">
                         {chapter.name_simple}
                       </h3>
@@ -107,7 +109,7 @@ export default function SurahListPage() {
                         <span className="capitalize">{chapter.verses_count} Ayahs</span>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>

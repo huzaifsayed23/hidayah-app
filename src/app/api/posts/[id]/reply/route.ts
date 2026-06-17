@@ -193,12 +193,25 @@ async function performCommentReport(postId: string, replyId: string) {
       { $addToSet: { "replies.$.reports": username } }
     );
 
+    // Also create an official Report document so the admin can see it
+    const Report = (await import('@/models/Report')).default;
+    await Report.create({
+      reporterId: user.userId,
+      postId: postId,
+      reason: "Inappropriate Content", // Default fallback since the old UI didn't ask for a reason
+      details: `Comment Report: User reported comment ${replyId} by ${reply.author}. Comment text: "${reply.content}"`
+    });
+
     return NextResponse.json({ 
       message: 'Comment reported successfully'
     }, { status: 200, headers: corsHeaders });
 
   } catch (error: any) {
     console.error('Comment Report Error:', error);
+    if (error.code === 11000) {
+      // Ignore duplicate report errors
+      return NextResponse.json({ message: 'Comment reported successfully' }, { status: 200, headers: corsHeaders });
+    }
     return NextResponse.json({ 
       message: `Server Error: ${error.message || 'Unknown'}` 
     }, { status: 500, headers: corsHeaders });
