@@ -48,9 +48,10 @@ function ProfileContent() {
     
     try {
       if (targetUser) {
+        const encodedUser = encodeURIComponent(targetUser);
         const [profileRes, searchRes] = await Promise.all([
-           hidayahFetch(`/api/users/profile/${targetUser}`),
-           hidayahFetch(`/api/users/search?q=${targetUser}`)
+           hidayahFetch(`/api/users/profile/${encodedUser}`),
+           hidayahFetch(`/api/users/search?q=${encodedUser}`)
         ]);
         
         if (profileRes.ok) {
@@ -59,7 +60,7 @@ function ProfileContent() {
           setDisplayPosts(profileData.posts || []);
         } else if (searchRes.ok) {
           const searchData = await searchRes.json();
-          const found = searchData.users?.find((u: any) => u.username === targetUser);
+          const found = searchData.users?.find((u: any) => u.username?.toLowerCase() === targetUser?.toLowerCase());
           if (found) {
             setUserData(found);
             const postsRes = await hidayahFetch(`/api/posts?userId=${found._id || found.id}`);
@@ -102,9 +103,9 @@ function ProfileContent() {
           setError("Could not load your profile details");
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Profile fetch error:", e);
-      setError("Failed to load profile");
+      setError(e.message || "Failed to load profile");
     } finally {
       setIsLoading(false);
     }
