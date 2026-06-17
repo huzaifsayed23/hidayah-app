@@ -49,16 +49,9 @@ function ProfileContent() {
     try {
       if (targetUser) {
         const encodedUser = encodeURIComponent(targetUser);
-        const [profileRes, searchRes] = await Promise.all([
-           hidayahFetch(`/api/users/profile/${encodedUser}`),
-           hidayahFetch(`/api/users/search?q=${encodedUser}`)
-        ]);
+        const searchRes = await hidayahFetch(`/api/users/search?q=${encodedUser}`);
         
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          setUserData(profileData.user);
-          setDisplayPosts(profileData.posts || []);
-        } else if (searchRes.ok) {
+        if (searchRes.ok) {
           const searchData = await searchRes.json();
           const found = searchData.users?.find((u: any) => u.username?.toLowerCase() === targetUser?.toLowerCase());
           if (found) {
