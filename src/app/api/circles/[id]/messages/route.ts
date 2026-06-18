@@ -6,7 +6,7 @@ import dbConnect from '@/lib/mongodb';
 import Circle from '@/models/Circle';
 import CircleMessage from '@/models/CircleMessage';
 import User from '@/models/User';
-import { pusherServer } from '@/lib/pusher';
+import { pusherServer } from '@/lib/pusher-server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 

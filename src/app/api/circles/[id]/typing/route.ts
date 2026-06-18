@@ -1,7 +1,7 @@
 
 
 import { NextResponse } from 'next/server';
-import { pusherServer } from '@/lib/pusher';
+import { pusherServer } from '@/lib/pusher-server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 

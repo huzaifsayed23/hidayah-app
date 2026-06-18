@@ -22,14 +22,19 @@ export default function ErrorBoundary({
       <h2 className="text-xl font-serif font-bold text-[var(--color-hidayah-dark)] mb-4">
         Something went wrong!
       </h2>
-      <p className="text-sm text-red-600 max-w-md mx-auto bg-red-50 p-4 rounded-xl border border-red-100 break-words font-mono text-left mb-6">
-        {error.message || "Unknown error"}
-        {error.stack && (
-          <span className="block mt-2 text-xs opacity-70">
-            {error.stack.split('\n')[1]}
-          </span>
+      <div className="text-xs text-red-600 max-w-md mx-auto bg-red-50 p-4 rounded-xl border border-red-100 break-words font-mono text-left mb-6 overflow-auto max-h-64">
+        <p className="font-bold mb-2">Message: {error?.message || "None"}</p>
+        <p className="font-bold mb-2">Name: {error?.name || "None"}</p>
+        <p className="font-bold mb-2">Digest: {error?.digest || "None"}</p>
+        {error?.stack && (
+          <div className="mt-2 opacity-80 whitespace-pre-wrap">
+            {error.stack}
+          </div>
         )}
-      </p>
+        <div className="mt-2 opacity-80 whitespace-pre-wrap">
+          {JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}
+        </div>
+      </div>
       <button
         onClick={() => reset()}
         className="px-6 py-3 bg-[var(--color-hidayah-dark)] text-white font-bold rounded-2xl shadow-lg hover:opacity-90 active:scale-95 transition-all"

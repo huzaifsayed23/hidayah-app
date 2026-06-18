@@ -3,7 +3,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import CircleMessage from '@/models/CircleMessage';
-import { pusherServer } from '@/lib/pusher';
+import { pusherServer } from '@/lib/pusher-server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
