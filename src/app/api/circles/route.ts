@@ -137,6 +137,52 @@ export async function POST(req: Request) {
         
         if (invitations.length > 0) {
           await Promise.all(invitations.map((invite: any) => Notification.create(invite)));
+          
+          // Send Push Notifications
+          try {
+            const { messaging } = await import('@/lib/firebase');
+            if (messaging) {
+              const User = (await import('@/models/User')).default;
+              const invitedUsers = await User.find({ _id: { $in: validMemberIds } }).select('fcmTokens');
+              
+              const tokens: string[] = [];
+              invitedUsers.forEach(u => {
+                if (u.fcmTokens) tokens.push(...u.fcmTokens);
+              });
+              
+              const uniqueTokens = [...new Set(tokens)];
+              
+              if (uniqueTokens.length > 0) {
+                await messaging.sendEachForMulticast({
+                  tokens: uniqueTokens,
+                  notification: {
+                    title: 'Circle Invitation',
+                    body: `${user.username || 'Someone'} invited you to join ${newCircle.title}`,
+                  },
+                  data: {
+                    route: `/community/circles`
+                  },
+                  android: {
+                    priority: 'high',
+                    notification: {
+                      sound: 'default',
+                      channelId: 'requests'
+                    }
+                  },
+                  apns: {
+                    payload: {
+                      aps: {
+                        sound: 'default',
+                        badge: 1
+                      }
+                    }
+                  }
+                });
+              }
+            }
+          } catch (err) {
+            console.error('FCM Bulk Invitation Error:', err);
+          }
         }
       }
 

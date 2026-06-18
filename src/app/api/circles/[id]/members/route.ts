@@ -80,6 +80,44 @@ export async function POST(
     });
 
     console.log(`Sent individual invitation to ${userId} for circle ${id}`);
+
+    // Send Push Notification
+    try {
+      const { messaging } = await import('@/lib/firebase');
+      if (messaging) {
+        const invitedUser = await User.findById(userId).select('fcmTokens');
+        if (invitedUser && invitedUser.fcmTokens && invitedUser.fcmTokens.length > 0) {
+          await messaging.sendEachForMulticast({
+            tokens: invitedUser.fcmTokens,
+            notification: {
+              title: 'Circle Invitation',
+              body: `${dbUser?.username || user.username || 'Someone'} invited you to join ${circle.title}`,
+            },
+            data: {
+              route: `/community/circles` // General area to accept
+            },
+            android: {
+              priority: 'high',
+              notification: {
+                sound: 'default',
+                channelId: 'requests'
+              }
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: 'default',
+                  badge: 1
+                }
+              }
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error('FCM Invitation Error:', err);
+    }
+
     return NextResponse.json({ message: 'Invitation sent' });
   } catch (error) {
     return NextResponse.json({ message: 'Error adding member' }, { status: 500 });
