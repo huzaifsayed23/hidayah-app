@@ -227,12 +227,12 @@ export default function CirclesPage() {
                 onContextMenu={(e) => activeTab === 'my' && handleContextMenu(e, circle)}
                 onTouchStart={() => activeTab === 'my' && handleTouchStart(circle)}
                 onTouchEnd={handleTouchEnd}
-                className="block bg-[var(--color-hidayah-secondary)] p-5 md:p-6 rounded-[24px] group hover:scale-[1.01] transition-transform border border-transparent hover:border-[var(--color-hidayah-border)]/50 shadow-sm"
+                className="block bg-[var(--color-hidayah-secondary)] p-4 md:p-5 rounded-[24px] group hover:scale-[1.01] transition-transform border border-transparent hover:border-[var(--color-hidayah-border)]/50 shadow-sm"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-[var(--color-hidayah-primary)] flex items-center justify-center text-[var(--color-hidayah-gold)] shrink-0 shadow-sm">
-                      <Users className="w-6 h-6" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-[var(--color-hidayah-primary)] flex items-center justify-center text-[var(--color-hidayah-gold)] shrink-0 shadow-sm">
+                      <Users className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -286,7 +286,7 @@ export default function CirclesPage() {
                   )}
                 </div>
                 
-                <div className="flex items-center justify-between pt-4 border-t border-[var(--color-hidayah-border)]/20">
+                <div className="flex items-center justify-between pt-3 border-t border-[var(--color-hidayah-border)]/20">
                   <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-hidayah-dark)]/40">
                     <span className="px-2 py-0.5 rounded bg-[var(--color-hidayah-gold)]/10 text-[var(--color-hidayah-gold)]">{circle.category}</span>
                     <span className="flex items-center gap-1">
