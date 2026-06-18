@@ -241,9 +241,9 @@ export default function CirclesPage() {
                         </h3>
                         {circle.privacy === 'private' ? <Lock className="w-3.5 h-3.5 opacity-30" /> : <Globe className="w-3.5 h-3.5 opacity-30" />}
                       </div>
-                      <p className="text-xs text-[var(--color-hidayah-dark)] opacity-50 mt-1 line-clamp-1">
+                      <p className={`text-xs mt-1 line-clamp-1 ${circle.unreadCount > 0 ? 'text-[var(--color-hidayah-dark)] font-bold' : 'text-[var(--color-hidayah-dark)] opacity-50'}`}>
                         {circle.lastMessageText ? (
-                          <span className="text-[var(--color-hidayah-gold)] font-medium">Last: {circle.lastMessageText}</span>
+                          <span>Last: {circle.lastMessageText}</span>
                         ) : circle.description}
                       </p>
                     </div>
@@ -267,8 +267,21 @@ export default function CirclesPage() {
                       )}
                     </button>
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-[var(--color-hidayah-primary)] flex items-center justify-center text-[var(--color-hidayah-dark)] group-hover:bg-[var(--color-hidayah-gold)] group-hover:text-[var(--color-hidayah-primary)] transition-colors">
-                      <MessageSquare className="w-5 h-5" />
+                    <div className="flex flex-col items-end gap-1">
+                      {circle.lastMessageAt && (
+                        <span className={`text-[10px] font-bold ${circle.unreadCount > 0 ? 'text-[var(--color-hidayah-gold)]' : 'text-[var(--color-hidayah-dark)]/40'}`}>
+                          {new Date(circle.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                      {circle.unreadCount > 0 ? (
+                        <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white font-bold text-[10px] shadow-sm">
+                          {circle.unreadCount > 99 ? '99+' : circle.unreadCount}
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-[var(--color-hidayah-primary)] flex items-center justify-center text-[var(--color-hidayah-dark)] group-hover:bg-[var(--color-hidayah-gold)] group-hover:text-[var(--color-hidayah-primary)] transition-colors">
+                          <MessageSquare className="w-5 h-5" />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

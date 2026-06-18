@@ -84,6 +84,15 @@ export async function GET(
       return NextResponse.json({ messages: [] }, { headers: { 'Access-Control-Allow-Origin': '*' } });
     }
 
+    // Mark messages as read for this user in this circle
+    if (user && user.userId) {
+      const Notification = (await import('@/models/Notification')).default;
+      await Notification.updateMany(
+        { recipientId: user.userId, circleId: circleId, type: 'circle_message', isRead: false },
+        { $set: { isRead: true } }
+      ).catch((e: any) => console.error("Error marking messages as read:", e));
+    }
+
     const messages = await CircleMessage.find({ circleId })
       .sort({ createdAt: 1 })
       .populate('senderId', 'username image')

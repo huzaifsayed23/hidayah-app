@@ -19,7 +19,17 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isShaking, setIsShaking] = useState(false);
-  const [hasUnread, setHasUnread] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await hidayahFetch('/api/notifications/unread-count');
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(data.unreadNotifications || 0);
+      }
+    } catch (e) {}
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -38,7 +48,7 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
           channel.bind('notification', (data: any) => {
             // Trigger shake for all notifications
             setIsShaking(true);
-            setHasUnread(true);
+            setUnreadCount(prev => prev + 1);
             setTimeout(() => setIsShaking(false), 500);
 
             // Play sound only for circle requests/invites
@@ -55,8 +65,16 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
 
     };
 
+    };
+
     setupPusher();
+    fetchUnreadCount();
+    
+    // Poll for notifications count
+    const interval = setInterval(fetchUnreadCount, 15000);
+
     return () => {
+      clearInterval(interval);
       if (channel) channel.unbind_all();
     };
   }, []);
@@ -132,8 +150,10 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
             >
               <Bell className="w-5 h-5 text-[var(--color-hidayah-dark)] opacity-70 group-hover:opacity-100 transition-opacity" />
             </motion.div>
-            {hasUnread && (
-              <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-[var(--color-hidayah-gold)] rounded-full border-2 border-[var(--color-hidayah-primary)]"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full border-2 border-[var(--color-hidayah-primary)] flex items-center justify-center translate-x-1 -translate-y-1">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
             )}
           </Link>
         </div>

@@ -51,7 +51,10 @@ export async function POST() {
     const userId = user.userId || user.email;
     await dbConnect();
     
-    await Notification.updateMany({ recipientId: userId, isRead: false }, { isRead: true });
+    await Notification.updateMany(
+      { recipientId: userId, isRead: false, type: { $ne: 'circle_message' } }, 
+      { isRead: true }
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

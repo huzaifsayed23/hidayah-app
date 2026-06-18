@@ -1,13 +1,33 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Home, Users, User, PlusCircle, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { hidayahFetch } from '@/lib/api';
 
 export default function BottomNav() {
   const rawPathname = usePathname();
   const pathname = rawPathname?.replace(/\/$/, '') || '/';
+  const [unreadCircles, setUnreadCircles] = useState(0);
+  
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const token = localStorage.getItem('hidayah_token');
+        if (!token) return;
+        const res = await hidayahFetch('/api/notifications/unread-count');
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadCircles(data.unreadCircles || 0);
+        }
+      } catch (err) {}
+    };
+    fetchCounts();
+    // Simple interval for background refresh
+    const interval = setInterval(fetchCounts, 15000);
+    return () => clearInterval(interval);
+  }, [pathname]); // Refetch when navigation happens (e.g. going out of a circle)
   
   // Debug log
 
@@ -72,13 +92,20 @@ export default function BottomNav() {
                 key={item.name}
                 href={item.href}
                 prefetch={false}
-                className={`flex items-center gap-2 ${isActive ? 'px-4' : 'px-3'} py-3 rounded-full transition-all duration-300 ${
+                className={`relative flex items-center gap-2 ${isActive ? 'px-4' : 'px-3'} py-3 rounded-full transition-all duration-300 ${
                   isActive 
                     ? 'bg-[#2E2A26] text-[#F2EBE1] shadow-md' 
                     : 'text-[#2E2A26]/60 hover:bg-[#E8DCCB]'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''} transition-transform`} />
+                <div className="relative">
+                  <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''} transition-transform`} />
+                  {item.name === 'Circles' && unreadCircles > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-[#F2EBE1]">
+                      {unreadCircles > 99 ? '99+' : unreadCircles}
+                    </span>
+                  )}
+                </div>
                 {isActive && <span className="text-[10px] font-bold uppercase tracking-widest">{item.name}</span>}
               </Link>
           );

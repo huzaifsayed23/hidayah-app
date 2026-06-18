@@ -2,6 +2,7 @@
 
 
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import Circle from '@/models/Circle';
 import Notification from '@/models/Notification';
@@ -40,6 +41,24 @@ export async function GET(req: Request) {
     let circles;
     if (filter === 'mine') {
       circles = await Circle.find({ memberIds: user.userId }).sort({ lastMessageAt: -1, createdAt: -1 }).limit(50).lean();
+      
+      let unreadCounts: Record<string, number> = {};
+      try {
+        const unreadAgg = await Notification.aggregate([
+          { $match: { recipientId: new mongoose.Types.ObjectId(user.userId), type: 'circle_message', isRead: false } },
+          { $group: { _id: '$circleId', count: { $sum: 1 } } }
+        ]);
+        unreadAgg.forEach((doc: any) => {
+          if (doc._id) unreadCounts[doc._id.toString()] = doc.count;
+        });
+      } catch (err) {
+        console.error("Error fetching unread counts for circles:", err);
+      }
+      
+      circles = circles.map((c: any) => ({
+        ...c,
+        unreadCount: unreadCounts[c._id.toString()] || 0
+      }));
     } else {
       // Discover: Circles that I'm NOT already a member of
       circles = await Circle.find({ 
