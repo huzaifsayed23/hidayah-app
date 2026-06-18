@@ -255,11 +255,11 @@ export async function POST(
       await pusherServer.trigger(`circle-${id}`, 'new-message', pusherMessage);
 
       // Create in-app notifications for all members EXCEPT the sender
-      const circle = await Circle.findById(circleId).select('members title');
-      if (circle && circle.members && circle.members.length > 0) {
+      const circle = await Circle.findById(circleId).select('memberIds title');
+      if (circle && circle.memberIds && circle.memberIds.length > 0) {
         const Notification = (await import('@/models/Notification')).default;
         
-        const otherMembers = circle.members.filter((m: any) => m.toString() !== user.userId.toString());
+        const otherMembers = circle.memberIds.filter((m: any) => m.toString() !== user.userId.toString());
         
         if (otherMembers.length > 0) {
           // Prepare in-app notification data
