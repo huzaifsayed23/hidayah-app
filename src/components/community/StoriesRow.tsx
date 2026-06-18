@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ChevronLeft, ChevronRight, BookOpen, Sparkles, Clock, Eye } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, BookOpen, Sparkles, Clock, Eye, MoreVertical, Share2, Trash2, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { MOOD_PALETTES, GRADIENT_LIBRARY, generateMeshGradient } from '@/lib/gradients';
 import { hidayahFetch } from '@/lib/api';
 import { safeStorage } from '@/lib/storage';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Share as CapShare } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface StoryReflection {
   _id: string;
@@ -50,7 +52,12 @@ export default function StoriesRow() {
   const [loading, setLoading] = useState<boolean>(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showViewersModal, setShowViewersModal] = useState<boolean>(false);
+  const [showMenu, setShowMenu] = useState<boolean>(false);
+  const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const router = useRouter();
+  
+  const storyCardRef = useRef<HTMLDivElement>(null);
 
   // Time tracker for story automatic progression
   const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -152,9 +159,129 @@ export default function StoriesRow() {
   const handleCloseViewer = () => {
     setActiveUserIndex(null);
     setProgressPercent(0);
+    setShowMenu(false);
     if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
   };
+  
+  const handleDelete = async (storyId: string) => {
+    if (!window.confirm("Are you sure you want to delete this reflection?")) return;
+    
+    setIsDeleting(true);
+    setShowMenu(false);
+    
+    try {
+      const res = await hidayahFetch(`/api/posts/${storyId}`, { method: 'DELETE' });
+      if (res.ok) {
+        // Remove from local state
+        setStories(prev => {
+          const newStories = [...prev];
+          const userIndex = newStories.findIndex(u => u.reflections.some(r => r._id === storyId));
+          if (userIndex !== -1) {
+            newStories[userIndex] = {
+              ...newStories[userIndex],
+              reflections: newStories[userIndex].reflections.filter(r => r._id !== storyId)
+            };
+            // If user has no more reflections, remove user
+            if (newStories[userIndex].reflections.length === 0) {
+              newStories.splice(userIndex, 1);
+            }
+          }
+          return newStories;
+        });
+        
+        // If we are still viewing it, close or go to next
+        if (activeStoryIndex === 0 && (!stories[activeUserIndex!] || stories[activeUserIndex!].reflections.length === 1)) {
+           handleCloseViewer();
+        } else {
+           handleNext();
+        }
+      } else {
+        alert("Failed to delete story.");
+      }
+    } catch (e) {
+      alert("Error deleting story.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
+    setShowMenu(false);
+    
+    try {
+      if (!storyCardRef.current) throw new Error("No card ref");
+      
+      const { toBlob } = await import('html-to-image');
+      
+      // We temporarily pause progression during sharing
+      if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+
+      const blob = await toBlob(storyCardRef.current, {
+        cacheBust: true,
+        pixelRatio: 2.5, 
+        backgroundColor: '#000000',
+      });
+
+      if (!blob) throw new Error("Capture failed");
+
+      // Mobile Native Sharing (Capacitor)
+      try {
+        const reader = new FileReader();
+        const base64Data = await new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+
+        const fileName = `hidayah_story_${Date.now()}.png`;
+        
+        const savedFile = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+
+        await CapShare.share({
+          title: 'Hidayah Reflection',
+          text: 'Shared from Hidayah',
+          files: [savedFile.uri],
+        });
+      } catch (capErr) {
+        // Web Fallback
+        const fileName = `hidayah_story_${Date.now()}.png`;
+        const file = new File([blob], fileName, { type: 'image/png' });
+        
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Hidayah Reflection',
+          });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          alert("Reflection saved to downloads. You can now share it!");
+        }
+      }
+    } catch (err) {
+      alert("Could not share. Please try again.");
+    } finally {
+      setIsSharing(false);
+      // Restart timer if needed
+      if (activeUserIndex !== null) {
+        handleNext(); // Or just let user tap, it's safer to not auto-progress after sharing
+      }
+    }
+  };
+
 
   // Trigger mark as viewed and handle auto-progression on active story change
   useEffect(() => {
@@ -169,7 +296,7 @@ export default function StoriesRow() {
       if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
 
-      if (!showViewersModal) {
+      if (!showViewersModal && !showMenu && !isSharing) {
         // Start progress bar animator
         const intervalMs = 50;
         const step = (intervalMs / STORY_DURATION_MS) * 100;
@@ -194,7 +321,7 @@ export default function StoriesRow() {
       if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     };
-  }, [activeUserIndex, activeStoryIndex, showViewersModal]);
+  }, [activeUserIndex, activeStoryIndex, showViewersModal, showMenu, isSharing]);
 
   if (loading) {
     return (
@@ -379,6 +506,7 @@ export default function StoriesRow() {
               {/* Center Panel: Reflection Content */}
               <div className="w-full max-w-xl mx-auto flex flex-col justify-center items-center py-8 px-4 flex-1">
                 <div 
+                  ref={storyCardRef}
                   className="w-full bg-white/10 border border-white/20 rounded-[28px] p-6 sm:p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden"
                   style={{ 
                     boxShadow: `0 20px 50px rgba(0,0,0,0.3), inset 0 0 20px rgba(255,255,255,0.05)`,
@@ -475,6 +603,51 @@ export default function StoriesRow() {
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
+              </div>
+              
+              {/* Floating Menu Button (Right Corner) */}
+              <div className="absolute right-4 bottom-[4.5rem] z-50 pointer-events-auto">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(!showMenu);
+                  }}
+                  disabled={isSharing || isDeleting}
+                  className="p-2.5 bg-black/40 backdrop-blur-md hover:bg-black/60 border border-white/10 rounded-full text-white/90 transition-all shadow-lg active:scale-95"
+                >
+                  {isSharing || isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <MoreVertical className="w-5 h-5" />}
+                </button>
+
+                {/* Popout Menu */}
+                <AnimatePresence>
+                  {showMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, y: 10, originX: 1, originY: 1 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute bottom-full right-0 mb-3 bg-[#1A1A1A]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden min-w-[160px] flex flex-col p-1"
+                    >
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleShare(); }}
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white hover:bg-white/10 rounded-xl transition-colors text-left"
+                      >
+                        <Share2 className="w-4 h-4 text-white/70" />
+                        Share to Story
+                      </button>
+                      
+                      {activeUser.userId === currentUserId && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleDelete(activeStory._id); }}
+                          className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-500/20 rounded-xl transition-colors text-left"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
             </div>
