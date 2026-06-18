@@ -65,8 +65,6 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
 
     };
 
-    };
-
     setupPusher();
     fetchUnreadCount();
     

@@ -8,7 +8,6 @@ import Notification from '@/models/Notification';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
-import { messaging } from '@/lib/firebase';
 
 async function getAuthUser() {
   const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
@@ -78,8 +77,9 @@ export async function POST(
     });
 
     // Send Push Notification
-    if (messaging) {
-      try {
+    try {
+      const { messaging } = await import('@/lib/firebase');
+      if (messaging) {
         const creator = await User.findById(circle.creatorId).select('fcmTokens');
         if (creator && creator.fcmTokens && creator.fcmTokens.length > 0) {
           await messaging.sendEachForMulticast({
@@ -108,9 +108,9 @@ export async function POST(
             }
           });
         }
-      } catch (err) {
-        console.error('FCM Join Request Error:', err);
       }
+    } catch (err) {
+      console.error('FCM Join Request Error:', err);
     }
 
     return NextResponse.json({ success: true, joined: false, message: 'Join request sent to the founder' });
