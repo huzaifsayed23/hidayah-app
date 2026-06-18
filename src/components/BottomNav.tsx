@@ -5,6 +5,7 @@ import { Home, Users, User, PlusCircle, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { hidayahFetch } from '@/lib/api';
+import { getPusherClient } from '@/lib/pusher';
 
 export default function BottomNav() {
   const rawPathname = usePathname();
@@ -12,6 +13,9 @@ export default function BottomNav() {
   const [unreadCircles, setUnreadCircles] = useState(0);
   
   useEffect(() => {
+    let channel: any;
+    let handleNotification: any;
+
     const fetchCounts = async () => {
       try {
         const token = localStorage.getItem('hidayah_token');
@@ -24,9 +28,39 @@ export default function BottomNav() {
       } catch (err) {}
     };
     fetchCounts();
+
+    const setupPusher = async () => {
+      try {
+        const token = localStorage.getItem('hidayah_token');
+        if (!token) return;
+        const res = await hidayahFetch('/api/auth/me');
+        if (res.ok) {
+          const userData = await res.json();
+          if (userData.id) {
+            const pusher = getPusherClient();
+            channel = pusher.subscribe(`user-${userData.id}`);
+            
+            handleNotification = (data: any) => {
+              if (data.type === 'circle_message') {
+                setUnreadCircles(prev => prev + 1);
+              }
+            };
+            
+            channel.bind('notification', handleNotification);
+          }
+        }
+      } catch (err) {}
+    };
+    setupPusher();
+
     // Simple interval for background refresh
     const interval = setInterval(fetchCounts, 15000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (channel && handleNotification) {
+        channel.unbind('notification', handleNotification);
+      }
+    };
   }, [pathname]); // Refetch when navigation happens (e.g. going out of a circle)
   
   // Debug log

@@ -19,8 +19,8 @@ export async function GET(req: Request) {
     const currentUserId = user.userId || user.id;
     const userObjectId = new mongoose.Types.ObjectId(currentUserId);
 
-    // 1. Find all circles where the current user is a member
-    const userCircles = await Circle.find({ memberIds: userObjectId }).select('memberIds').lean();
+    // 1. Find all private circles where the current user is a member
+    const userCircles = await Circle.find({ memberIds: userObjectId, privacy: 'private' }).select('memberIds').lean();
     
     // 2. Gather all member IDs from these circles
     const allowedUserIdsSet = new Set<string>();

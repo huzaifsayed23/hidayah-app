@@ -276,6 +276,11 @@ export async function POST(
           // Bulk insert for efficiency
           await Notification.insertMany(notificationData, { ordered: false }).catch(e => console.error("Notification bulk insert error:", e));
 
+          // Realtime badge update
+          otherMembers.forEach((memberId: any) => {
+            pusherServer.trigger(`user-${memberId}`, 'notification', { type: 'circle_message', circleId }).catch(e => console.error("Pusher error:", e));
+          });
+
           // ----------------------------------------------------
           // FIREBASE PUSH NOTIFICATIONS
           // ----------------------------------------------------

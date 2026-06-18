@@ -48,7 +48,9 @@ export default function CommunityHeader({ userName, onSearch }: CommunityHeaderP
           channel.bind('notification', (data: any) => {
             // Trigger shake for all notifications
             setIsShaking(true);
-            setUnreadCount(prev => prev + 1);
+            if (data.type !== 'circle_message') {
+              setUnreadCount(prev => prev + 1);
+            }
             setTimeout(() => setIsShaking(false), 500);
 
             // Play sound only for circle requests/invites
