@@ -19,7 +19,19 @@ export const getPusherClient = () => {
       ? `${HIDAYAH_API_URL}/api/pusher/auth` 
       : (isBrowser ? '/api/pusher/auth' : `${HIDAYAH_API_URL}/api/pusher/auth`);
 
-    pusherClient = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
+    const appKey = process.env.NEXT_PUBLIC_PUSHER_APP_KEY;
+    if (!appKey) {
+      console.warn("Pusher App Key is missing. Real-time features disabled.");
+      pusherClient = {
+        subscribe: () => ({ bind: () => {}, unbind_all: () => {}, unsubscribe: () => {} }),
+        unsubscribe: () => {},
+        bind: () => {},
+        unbind_all: () => {},
+      };
+      return pusherClient;
+    }
+
+    pusherClient = new PusherClient(appKey, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
       userAuthentication: {
         endpoint: authEndpoint,
