@@ -454,7 +454,28 @@ export default function CircleChatPage() {
     setTimeout(() => setToastMessage(""), 4000);
   };
 
-  if (isLoading || !id) {
+  if (!id) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--color-hidayah-primary)] px-4 text-center">
+        <div className="w-16 h-16 bg-[var(--color-hidayah-secondary)] rounded-2xl flex items-center justify-center mb-6">
+          <Info className="w-8 h-8 text-[var(--color-hidayah-dark)]/40" />
+        </div>
+        <h2 className="text-xl font-serif font-bold text-[var(--color-hidayah-dark)] mb-4">No Chat Selected</h2>
+        <p className="text-sm text-[var(--color-hidayah-dark)]/60 mb-8 max-w-xs">
+          Please go back to the Circles page and select a chat to join the conversation.
+        </p>
+        <button 
+          onClick={() => router.push('/community/circles')}
+          className="px-6 py-3 bg-[var(--color-hidayah-dark)] text-white font-bold rounded-2xl shadow-lg hover:opacity-90 active:scale-95 transition-all flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Circles
+        </button>
+      </div>
+    );
+  }
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-hidayah-primary)]">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--color-hidayah-gold)]" />
