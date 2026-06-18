@@ -56,3 +56,37 @@ export async function GET() {
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const user = await getAuthUser();
+    const isAdmin = user?.email?.toLowerCase() === 'huzaifsayed454@gmail.com';
+    if (!isAdmin) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('userId');
+
+    if (!userId) {
+      return NextResponse.json({ message: 'User ID is required' }, { status: 400 });
+    }
+
+    await dbConnect();
+    
+    // Check if user exists
+    const userToDelete = await User.findById(userId);
+    if (!userToDelete) {
+        return NextResponse.json({ message: 'User not found' }, { status: 404 });
+    }
+
+    // You might also want to delete their posts, replies, etc here
+    // For now, let's just delete the user document
+    await User.findByIdAndDelete(userId);
+
+    return NextResponse.json({ message: 'User deleted successfully' }, { status: 200 });
+  } catch (error) {
+    console.error('Admin user delete error:', error);
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+  }
+}

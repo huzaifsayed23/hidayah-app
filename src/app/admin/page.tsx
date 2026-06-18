@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
-import { ShieldAlert, Users, Mail, Clock, Lock, Key, Loader2 } from "lucide-react";
+import { ShieldAlert, Users, Mail, Clock, Lock, Key, Loader2, Trash2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { hidayahFetch } from '@/lib/api';
 
@@ -58,6 +58,28 @@ export default function AdminDashboard() {
     };
     fetchData();
   }, []);
+
+  const handleDeleteUser = async (userId: string, username: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete user @${username}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await hidayahFetch(`/api/admin/users/?userId=${userId}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        setUsers(users.filter(u => u._id.toString() !== userId));
+      } else {
+        const data = await res.json();
+        alert(`Failed to delete user: ${data.message}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('An error occurred while deleting the user.');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -134,6 +156,9 @@ export default function AdminDashboard() {
                     <th className="p-4 font-bold text-[10px] text-[var(--color-hidayah-dark)]/70 uppercase tracking-widest">
                       <span className="flex items-center gap-2"><Lock className="w-3.5 h-3.5 text-[var(--color-hidayah-gold)]"/> Key</span>
                     </th>
+                    <th className="p-4 font-bold text-[10px] text-[var(--color-hidayah-dark)]/70 uppercase tracking-widest text-right">
+                      <span className="flex items-center gap-2 justify-end">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-hidayah-border)]/20">
@@ -155,6 +180,15 @@ export default function AdminDashboard() {
                         <div className="bg-[var(--color-hidayah-primary)]/50 text-[var(--color-hidayah-dark)]/40 font-mono text-[9px] sm:text-[10px] px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg truncate max-w-[120px] sm:max-w-[200px] border border-[var(--color-hidayah-border)]/30 group-hover:border-[var(--color-hidayah-gold)]/30 transition-colors">
                           {user.password}
                         </div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <button
+                          onClick={() => handleDeleteUser(user._id.toString(), user.username || user.email)}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-full transition-colors opacity-60 group-hover:opacity-100"
+                          title="Delete User"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}

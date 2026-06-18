@@ -609,7 +609,7 @@ const FeedCard = memo(({
         if (compact) {
           const target = e.target as HTMLElement;
           if (target.closest('button') || target.closest('a')) return;
-          router.push(`/community/post/${id}`);
+          router.push(`/community/post-reader?id=${id}`);
         }
       }}
     >
@@ -753,7 +753,7 @@ const FeedCard = memo(({
           {preview && isLongContent && (
             <div className="pt-1 flex justify-end">
               <Link 
-                href={`/community/post/${id}`}
+                href={`/community/post-reader?id=${id}`}
                 className="text-[var(--color-hidayah-gold)] hover:text-white text-[10px] sm:text-xs font-bold tracking-widest uppercase transition-colors duration-200 flex items-center gap-1 bg-black/10 hover:bg-black/25 border border-white/5 px-3 py-1.5 rounded-full shadow-sm"
               >
                 Read Full

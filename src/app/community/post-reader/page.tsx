@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Bookmark, Share2, Heart, MessageCircle, Send, Loader2, Trash2, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { hidayahFetch } from '@/lib/api';
@@ -12,10 +12,10 @@ import { Logo } from '@/components/Logo';
 import ShareReflectionModal from '@/components/community/ShareReflectionModal';
 import { Share as CapShare } from '@capacitor/share';
 
-export default function PostReaderPage() {
-  const params = useParams();
+function PostReaderContent() {
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const id = params.id as string;
+  const id = searchParams?.get('id') as string;
 
   const [post, setPost] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -425,48 +425,38 @@ export default function PostReaderPage() {
                   >
                     {post.verse.text}
                   </p>
-                </div>
-
-                <div className="mt-6 pr-2">
-                  <p 
-                    className="font-serif text-sm sm:text-base md:text-lg italic leading-relaxed text-white/90 text-justify"
-                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}
-                  >
-                    "{post.verse.translation}"
-                  </p>
+                  
+                  {post.verse.translation && (
+                    <p 
+                      className="italic text-sm sm:text-base md:text-lg text-white/90 leading-relaxed allow-select select-all font-serif mt-6"
+                    >
+                      "{post.verse.translation}"
+                    </p>
+                  )}
                 </div>
               </div>
             )}
-
+            
             {post.hadith && (
               <div className="space-y-6 animate-in fade-in duration-700">
-                <div>
+                <div className="border-l-4 border-[var(--color-hidayah-gold)] pl-5 py-2">
                   <p className="text-[10px] sm:text-xs font-serif italic tracking-[0.2em] uppercase text-white/50 mb-4">
-                    {post.hadith.bookName} • Hadith {post.hadith.hadithNumber}
+                    {post.hadith.bookName} • {post.hadith.hadithNumber} • {post.hadith.status}
                   </p>
                   
                   <p 
-                    className="font-arabic text-base sm:text-lg md:text-xl text-center text-white leading-[1.8] allow-select select-all" 
+                    className="font-quran text-lg sm:text-xl md:text-2xl text-right text-white leading-[1.8] allow-select select-all" 
                     dir="rtl"
                     style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}
                   >
                     {post.hadith.hadithArabic}
                   </p>
-                </div>
-
-                <div className="mt-6 pr-2">
+                  
                   <p 
-                    className="font-serif text-sm sm:text-base md:text-lg leading-[1.6] text-white/90 text-justify"
-                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}
+                    className="italic text-sm sm:text-base md:text-lg text-white/90 leading-relaxed allow-select select-all font-serif mt-6"
                   >
-                    {post.hadith.hadithEnglish}
+                    "{post.hadith.hadithEnglish}"
                   </p>
-                </div>
-
-                <div className="flex justify-between items-center pt-2">
-                  <div className="px-4 py-1.5 rounded-full bg-[var(--color-hidayah-gold)] text-white text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-gold/20">
-                    {post.hadith.status}
-                  </div>
                 </div>
               </div>
             )}
@@ -743,7 +733,7 @@ export default function PostReaderPage() {
                     <button 
                       onClick={submitReply}
                       disabled={!replyText.trim() || isSubmittingReply}
-                      className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 bg-[var(--color-hidayah-dark)] text-white disabled:opacity-30 disabled:scale-100 shrink-0 shadow-sm"
+                      className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 bg-[var(--color-hidayah-dark)] text-[var(--color-hidayah-primary)] disabled:opacity-30 disabled:scale-100 shrink-0 shadow-sm"
                     >
                       {isSubmittingReply ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -832,5 +822,13 @@ export default function PostReaderPage() {
         isProcessing={isSharing}
       />
     </div>
+  );
+}
+
+export default function PostReaderPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--color-hidayah-primary)]" />}>
+      <PostReaderContent />
+    </Suspense>
   );
 }

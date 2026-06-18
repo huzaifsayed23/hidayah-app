@@ -34,7 +34,7 @@ export default function QuranPage() {
           userId = payload.userId || 'guest';
         } catch (e) {}
       }
-      const storageKey = `hidayah_bookmarks_${userId}`;
+      const storageKey = `hidayah_bookmarks_objects_${userId}`;
 
       // Immediate load from localStorage for instant feel
       const localPage = safeStorage.getItem('hidayah_last_read_page');
@@ -42,8 +42,7 @@ export default function QuranPage() {
       
       const localBookmarks = JSON.parse(safeStorage.getItem(storageKey) || '[]');
       if (localBookmarks.length > 0) {
-        // Fallback placeholder if server hasn't loaded yet
-        setBookmarks(localBookmarks.map((k: string) => ({ verseKey: k, pageNumber: 1, addedAt: new Date() })));
+        setBookmarks(localBookmarks);
       }
 
       try {
@@ -63,7 +62,7 @@ export default function QuranPage() {
           
           const serverBookmarks = profileData.user.bookmarks || [];
           setBookmarks(serverBookmarks);
-          safeStorage.setItem(storageKey, JSON.stringify(serverBookmarks.map((b: any) => b.verseKey)));
+          safeStorage.setItem(storageKey, JSON.stringify(serverBookmarks));
         }
       } catch (e) {
         console.error("Quran page data fetch error:", e);

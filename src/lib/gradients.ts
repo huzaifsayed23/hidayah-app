@@ -18,9 +18,9 @@ export interface GradientTheme {
 }
 
 export const GRADIENT_LIBRARY: Record<string, GradientTheme> = {
-  Kawn: {
-    id: "Kawn",
-    label: "Kawn",
+  Peaceful: {
+    id: "Peaceful",
+    label: "Peaceful",
     description: "Signs of Creation",
     options: [
       { id: "nature-1", name: "Emerald & Gold Steel", colors: ["#064E3B", "#C9A646", "#334155", "#022C22"], primary: "#064E3B" },
@@ -111,13 +111,12 @@ export const SPIRITUAL_THEMES = Object.keys(GRADIENT_LIBRARY).filter(key => key 
 
 // --- BACKWARD COMPATIBILITY (LEGACY PALETTES UPDATED TO MARBLE) ---
 export const PALETTES: Record<string, string[]> = {
-  "Kawn": ["#064E3B", "#065F46", "#14532D", "#022C22", "#0F172A"],
+  "Peaceful": ["#064E3B", "#065F46", "#14532D", "#022C22", "#0F172A"],
   "Grateful": ["#134E4A", "#0D9488", "#1E293B", "#115E59", "#111827"],
   "Hopeful": ["#00BFFF", "#0284C7", "#0EA5E9", "#00FFFF", "#0C4A6E"],
   "Reflective": ["#8B5CF6", "#7C3AED", "#6D28D9", "#FF69B4", "#4C1D95"],
   "Sabr": ["#818CF8", "#D4AF37", "#6366F1", "#DB2777", "#312E81"],
   "Seeking Sabr": ["#818CF8", "#D4AF37", "#6366F1", "#DB2777", "#312E81"], // Alias for Sabr
-  "Peaceful": ["#34D399", "#BEF264", "#10B981", "#059669", "#064E3B"],
   "Burgundy Royal": ["#D946EF", "#C026D3", "#A21CAF", "#00FFFF", "#701A75"],
   "Mocha Cream": ["#FBBF24", "#F59E0B", "#D97706", "#FFD700", "#451A03"],
   "Olive Sage": ["#065F46", "#34D399", "#059669", "#047857", "#022C22"],

@@ -23,10 +23,10 @@ export default function CreateReflectionPage() {
   
   // State
   const [reflectionText, setReflectionText] = useState("");
-  const [selectedSuite, setSelectedSuite] = useState(SPIRITUAL_THEMES[0] || "Kawn");
+  const [selectedSuite, setSelectedSuite] = useState(SPIRITUAL_THEMES[0] || "Peaceful");
   const [selectedGradient, setSelectedGradient] = useState(
     (SPIRITUAL_THEMES[0] && GRADIENT_LIBRARY[SPIRITUAL_THEMES[0]]?.options[0]) || 
-    GRADIENT_LIBRARY["Kawn"].options[0]
+    GRADIENT_LIBRARY["Peaceful"].options[0]
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);

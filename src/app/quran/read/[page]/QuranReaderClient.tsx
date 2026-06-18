@@ -43,21 +43,22 @@ export default function QuranReaderClient({ initialPage, juzNumber }: { initialP
           } catch (e) {}
         }
         
-        const storageKey = `hidayah_bookmarks_${userId}`;
+        const storageKey = `hidayah_bookmarks_objects_${userId}`;
         const localBookmarks = JSON.parse(safeStorage.getItem(storageKey) || '[]');
         
         try {
           const bookmarksRes = await hidayahFetch('/api/users/quran/bookmarks');
           if (bookmarksRes.ok) {
             const bData = await bookmarksRes.json();
-            const apiKeys = bData.bookmarks?.map((b: any) => b.verseKey) || [];
+            const apiBookmarks = bData.bookmarks || [];
+            const apiKeys = apiBookmarks.map((b: any) => b.verseKey);
             setBookmarks(apiKeys);
-            safeStorage.setItem(storageKey, JSON.stringify(apiKeys));
+            safeStorage.setItem(storageKey, JSON.stringify(apiBookmarks));
           } else {
-            setBookmarks(localBookmarks);
+            setBookmarks(localBookmarks.map((b: any) => b.verseKey));
           }
         } catch (e) {
-          setBookmarks(localBookmarks);
+          setBookmarks(localBookmarks.map((b: any) => b.verseKey));
         }
 
       } catch (error) {
@@ -75,15 +76,50 @@ export default function QuranReaderClient({ initialPage, juzNumber }: { initialP
       const targetRef = pageRefs.current[initialPage.toString()];
       if (targetRef) {
         setTimeout(() => {
-          targetRef.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          targetRef.scrollIntoView({ behavior: 'auto', block: 'start' });
         }, 100);
       }
     }
   }, [isLoading, initialPage, verses.length]);
 
+  // Intersection Observer to track which page is currently in view
+  useEffect(() => {
+    if (isLoading || verses.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const pageNum = entry.target.getAttribute('data-page');
+            if (pageNum) {
+              // Update last read page dynamically as user scrolls
+              safeStorage.setItem('hidayah_last_read_page', pageNum);
+              safeStorage.setItem('hidayah_last_read_juz', juzNumber.toString());
+              
+              // Optional: debounce this and sync with backend later, but local is good enough for now
+              try {
+                hidayahFetch('/api/users/profile', {
+                  method: 'PUT',
+                  body: JSON.stringify({ lastReadPage: parseInt(pageNum) })
+                });
+              } catch (e) {}
+            }
+          }
+        });
+      },
+      { threshold: 0.3 } // 30% of the page needs to be visible
+    );
+
+    Object.values(pageRefs.current).forEach((el) => {
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [isLoading, verses.length, juzNumber]);
+
   const toggleBookmark = async (verseKey: string, pNum: number) => {
     const isBookmarked = bookmarks.includes(verseKey);
-    const newBookmarks = isBookmarked ? bookmarks.filter(k => k !== verseKey) : [...bookmarks, verseKey];
+    const newBookmarksKeys = isBookmarked ? bookmarks.filter(k => k !== verseKey) : [...bookmarks, verseKey];
     
     const token = safeStorage.getItem('hidayah_token');
     let userId = 'guest';
@@ -93,11 +129,19 @@ export default function QuranReaderClient({ initialPage, juzNumber }: { initialP
         userId = payload.userId || 'guest';
       } catch (e) {}
     }
-    const storageKey = `hidayah_bookmarks_${userId}`;
+    const storageKey = `hidayah_bookmarks_objects_${userId}`;
+    
+    const oldObjects = JSON.parse(safeStorage.getItem(storageKey) || '[]');
+    let newObjects = [];
+    if (isBookmarked) {
+      newObjects = oldObjects.filter((o: any) => o.verseKey !== verseKey);
+    } else {
+      newObjects = [...oldObjects, { verseKey, pageNumber: pNum, addedAt: new Date().toISOString() }];
+    }
 
     // Optimistic update
-    setBookmarks(newBookmarks);
-    safeStorage.setItem(storageKey, JSON.stringify(newBookmarks));
+    setBookmarks(newBookmarksKeys);
+    safeStorage.setItem(storageKey, JSON.stringify(newObjects));
 
     try {
       // Backend POST handles the toggle internally
@@ -112,13 +156,13 @@ export default function QuranReaderClient({ initialPage, juzNumber }: { initialP
       if (!res.ok) {
         // Revert on error
         setBookmarks(bookmarks);
-        safeStorage.setItem(storageKey, JSON.stringify(bookmarks));
+        safeStorage.setItem(storageKey, JSON.stringify(oldObjects));
       }
     } catch (err) {
       console.warn("API bookmark failed", err);
       // Revert on error
       setBookmarks(bookmarks);
-      safeStorage.setItem(storageKey, JSON.stringify(bookmarks));
+      safeStorage.setItem(storageKey, JSON.stringify(oldObjects));
     }
   };
 
@@ -155,6 +199,7 @@ export default function QuranReaderClient({ initialPage, juzNumber }: { initialP
           {Object.keys(pages).map((pageNum: string) => (
             <div 
               key={pageNum} 
+              data-page={pageNum}
               ref={(el) => { pageRefs.current[pageNum] = el; }}
               className="bg-[var(--color-hidayah-mushaf-bg)] rounded-[32px] shadow-lg border border-hidayah-border/10 overflow-hidden relative transition-colors duration-300"
             >

@@ -17,6 +17,24 @@ export default function PushNotificationSetup() {
       if (!token || hasRegistered) return;
 
       try {
+        // Create Android channels before requesting permission
+        if (Capacitor.getPlatform() === 'android') {
+          await PushNotifications.createChannel({
+            id: 'messages',
+            name: 'Messages',
+            description: 'Notifications for new messages',
+            importance: 5,
+            visibility: 1,
+          });
+          await PushNotifications.createChannel({
+            id: 'requests',
+            name: 'Requests',
+            description: 'Notifications for requests',
+            importance: 5,
+            visibility: 1,
+          });
+        }
+
         // Request permission
         let permStatus = await PushNotifications.checkPermissions();
 

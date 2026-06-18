@@ -8,6 +8,7 @@ import Notification from '@/models/Notification';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+import { messaging } from '@/lib/firebase';
 
 async function getAuthUser() {
   const cookieStore = (await cookies().catch(() => null)); if (!cookieStore) return NextResponse.json({ message: "Build mode" }, { status: 200 });
@@ -75,6 +76,42 @@ export async function POST(
       circleTitle: circle.title,
       status: 'pending'
     });
+
+    // Send Push Notification
+    if (messaging) {
+      try {
+        const creator = await User.findById(circle.creatorId).select('fcmTokens');
+        if (creator && creator.fcmTokens && creator.fcmTokens.length > 0) {
+          await messaging.sendEachForMulticast({
+            tokens: creator.fcmTokens,
+            notification: {
+              title: 'New Request',
+              body: `${dbUser?.username || user.username || 'Someone'} requested to join ${circle.title}`,
+            },
+            data: {
+              route: `/community/chat/info` // Or a requests page
+            },
+            android: {
+              priority: 'high',
+              notification: {
+                sound: 'default',
+                channelId: 'requests'
+              }
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: 'default',
+                  badge: 1
+                }
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.error('FCM Join Request Error:', err);
+      }
+    }
 
     return NextResponse.json({ success: true, joined: false, message: 'Join request sent to the founder' });
   } catch (error) {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, BookOpen, Sparkles, Clock, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { MOOD_PALETTES, GRADIENT_LIBRARY, generateMeshGradient } from '@/lib/gradients';
@@ -294,14 +295,15 @@ export default function StoriesRow() {
       </div>
 
       {/* Full-Screen 24h Story Viewer */}
-      <AnimatePresence>
-        {activeUser && activeStory && (
-          <motion.div
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {activeUser && activeStory && (
+            <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="fixed inset-0 z-[300000] bg-black flex flex-col select-none"
+            className="fixed inset-0 z-[999999] bg-black flex flex-col select-none"
           >
             {/* Story Backdrop */}
             <div className="absolute inset-0 z-0 overflow-hidden" style={getStoryStyle(activeStory)}>
@@ -556,10 +558,11 @@ export default function StoriesRow() {
                 </div>
               )}
             </AnimatePresence>
-
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
