@@ -54,6 +54,7 @@ export default function StoriesRow() {
   const [showViewersModal, setShowViewersModal] = useState<boolean>(false);
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const router = useRouter();
   
@@ -216,6 +217,10 @@ export default function StoriesRow() {
       
       const { toBlob } = await import('html-to-image');
       
+      // Temporarily show the background inside the card for export
+      setIsExporting(true);
+      await new Promise(r => setTimeout(r, 150)); // Wait for render
+      
       // We temporarily pause progression during sharing
       if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
@@ -225,6 +230,8 @@ export default function StoriesRow() {
         pixelRatio: 2.5, 
         backgroundColor: '#000000',
       });
+      
+      setIsExporting(false); // Restore UI immediately
 
       if (!blob) throw new Error("Capture failed");
 
@@ -272,6 +279,7 @@ export default function StoriesRow() {
         }
       }
     } catch (err) {
+      setIsExporting(false);
       alert("Could not share. Please try again.");
     } finally {
       setIsSharing(false);
@@ -507,14 +515,22 @@ export default function StoriesRow() {
               <div className="w-full max-w-xl mx-auto flex flex-col justify-center items-center py-8 px-4 flex-1">
                 <div 
                   ref={storyCardRef}
-                  className="w-full bg-white/10 border border-white/20 rounded-[28px] p-6 sm:p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden"
+                  className={`w-full border border-white/20 rounded-[28px] p-6 sm:p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden ${isExporting ? 'bg-transparent' : 'bg-white/10'}`}
                   style={{ 
                     boxShadow: `0 20px 50px rgba(0,0,0,0.3), inset 0 0 20px rgba(255,255,255,0.05)`,
                     textShadow: activeStory.textColor === '#000000' ? 'none' : '0 2px 10px rgba(0,0,0,0.5)',
                   }}
                 >
-                  {/* Decorative background image overlay */}
-                  {activeStory.customBackgroundImage && (
+                  {/* Export Background Layer (Only visible during share capture) */}
+                  {isExporting && (
+                    <>
+                      <div className="absolute inset-0 z-0" style={getStoryStyle(activeStory)} />
+                      <div className={`absolute inset-0 z-0 ${activeStory.customBackgroundImage ? 'bg-black/40' : 'bg-black/25'}`} />
+                    </>
+                  )}
+
+                  {/* Decorative background image overlay (normal view) */}
+                  {activeStory.customBackgroundImage && !isExporting && (
                     <div className="absolute inset-0 z-0">
                       <img src={activeStory.customBackgroundImage} alt="Background" className="w-full h-full object-cover opacity-30" />
                       <div className="absolute inset-0 bg-black/40" />
@@ -565,11 +581,18 @@ export default function StoriesRow() {
 
                   {/* Mood Tag */}
                   <div className="relative z-10 flex justify-end mt-4">
-                    <span className="px-3.5 py-1.5 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] bg-white/5 border border-white/10 text-white/50">
+                    <span className="px-3.5 py-1.5 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] bg-black/20 border border-white/10 text-white/70 backdrop-blur-md">
                       {activeStory.moodTag}
                     </span>
                   </div>
                 </div>
+                
+                {/* Export Logo Overlay (Only visible during share capture) */}
+                {isExporting && (
+                  <div className="absolute top-10 left-8 z-50 opacity-80 flex items-center gap-2">
+                     <span className="font-serif text-white font-bold tracking-widest uppercase text-xs">Hidayah</span>
+                  </div>
+                )}
               </div>
 
               {/* Bottom Navigation Buttons */}
