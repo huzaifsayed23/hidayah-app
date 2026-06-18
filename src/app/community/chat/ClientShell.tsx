@@ -14,11 +14,8 @@ import { HIDAYAH_API_URL, hidayahFetch } from '@/lib/api';
 import { safeStorage } from '@/lib/storage';
 import ReportModal from '@/components/community/ReportModal';
 
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
 function cn(...inputs: any[]) {
-  return twMerge(clsx(inputs));
+  return inputs.filter(Boolean).join(' ');
 }
 
 const REACTION_EMOJIS = ['🤲', '🌙', '🕋', '🕌', '📿', '❤️', '✨', '👍'];
@@ -728,7 +725,9 @@ export default function CircleChatPage() {
                   </div>
                 </div>
                 <span className="text-[9px] opacity-30 px-2">
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {msg.createdAt && !isNaN(new Date(msg.createdAt).getTime()) 
+                    ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+                    : ''}
                 </span>
               </div>
             );

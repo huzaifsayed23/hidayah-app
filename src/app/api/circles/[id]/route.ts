@@ -93,7 +93,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     if (!circle) return NextResponse.json({ message: 'Circle not found' }, { status: 404 });
 
     // Only creator can delete the circle
-    if (circle.creatorId.toString() !== user.userId) {
+    if (circle.creatorId.toString() !== user.userId && circle.creatorId.toString() !== user.email && circle.creatorId.toString() !== user.username) {
       return NextResponse.json({ message: 'Only the founder can disband this circle' }, { status: 403 });
     }
 

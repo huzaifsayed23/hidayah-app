@@ -60,9 +60,10 @@ export async function GET(req: Request) {
         unreadCount: unreadCounts[c._id.toString()] || 0
       }));
     } else {
-      // Discover: Circles that I'm NOT already a member of
+      // Discover: Circles that I'm NOT already a member of and that are public
       circles = await Circle.find({ 
-        memberIds: { $ne: user.userId }
+        memberIds: { $ne: user.userId },
+        privacy: 'public'
       }).sort({ lastMessageAt: -1, createdAt: -1 }).limit(50).lean();
     }
 
