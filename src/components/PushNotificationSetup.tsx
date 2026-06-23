@@ -10,6 +10,7 @@ import { X, Bell } from 'lucide-react';
 
 export default function PushNotificationSetup() {
   const router = useRouter();
+  const [inAppNotification, setInAppNotification] = useState<{title: string, body: string, route?: string} | null>(null);
   const hasRegisteredRef = useRef(false);
   const pathname = usePathname();
 
