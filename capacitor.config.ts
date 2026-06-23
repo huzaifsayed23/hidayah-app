@@ -7,7 +7,9 @@ const config: CapacitorConfig = {
   // @ts-ignore - bundledWebRuntime is required for legacy support in some environments
   bundledWebRuntime: false,
   server: {
-    cleartext: true
+    cleartext: true,
+    url: "https://hidayah-lpqy.vercel.app",
+    allowNavigation: ["hidayah-lpqy.vercel.app", "*.vercel.app"]
   },
   plugins: {
     CapacitorHttp: {

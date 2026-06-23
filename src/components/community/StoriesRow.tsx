@@ -64,6 +64,7 @@ export default function StoriesRow() {
   const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isPausedRef = useRef<boolean>(false);
 
   const STORY_DURATION_MS = 6000; // 6 seconds per story
 
@@ -161,6 +162,7 @@ export default function StoriesRow() {
     setActiveUserIndex(null);
     setProgressPercent(0);
     setShowMenu(false);
+    isPausedRef.current = false;
     if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
   };
@@ -309,19 +311,17 @@ export default function StoriesRow() {
         const intervalMs = 50;
         const step = (intervalMs / STORY_DURATION_MS) * 100;
         progressIntervalRef.current = setInterval(() => {
+          if (isPausedRef.current) return;
           setProgressPercent(prev => {
-            if (prev >= 100) {
+            const nextVal = prev + step;
+            if (nextVal >= 100) {
               clearInterval(progressIntervalRef.current!);
+              setTimeout(() => handleNext(), 0);
               return 100;
             }
-            return prev + step;
+            return nextVal;
           });
         }, intervalMs);
-
-        // Start the timeout to go to next story
-        progressTimerRef.current = setTimeout(() => {
-          handleNext();
-        }, STORY_DURATION_MS);
       }
     }
 
@@ -446,7 +446,13 @@ export default function StoriesRow() {
             </div>
 
             {/* Left and Right Tap Targets */}
-            <div className="absolute inset-0 z-30 flex">
+            <div 
+              className="absolute inset-0 z-30 flex"
+              onPointerDown={() => { isPausedRef.current = true; }}
+              onPointerUp={() => { isPausedRef.current = false; }}
+              onPointerLeave={() => { isPausedRef.current = false; }}
+              onPointerCancel={() => { isPausedRef.current = false; }}
+            >
               <div onClick={handlePrev} className="w-1/3 h-full cursor-pointer" />
               <div onClick={handleNext} className="w-2/3 h-full cursor-pointer" />
             </div>
@@ -512,10 +518,10 @@ export default function StoriesRow() {
               </div>
 
               {/* Center Panel: Reflection Content */}
-              <div className="w-full max-w-xl mx-auto flex flex-col justify-center items-center py-8 px-4 flex-1">
+              <div className={`w-full max-w-xl mx-auto flex flex-col justify-center items-center py-8 px-4 ${isExporting ? 'h-auto' : 'flex-1'}`}>
                 <div 
                   ref={storyCardRef}
-                  className={`w-full border border-white/20 rounded-[28px] p-6 sm:p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden ${isExporting ? 'bg-transparent' : 'bg-white/10'}`}
+                  className={`w-full border border-white/20 rounded-[28px] p-6 sm:p-8 flex flex-col justify-between shadow-2xl relative ${isExporting ? 'bg-transparent min-h-[500px]' : 'bg-white/10 overflow-hidden'}`}
                   style={{ 
                     boxShadow: `0 20px 50px rgba(0,0,0,0.3), inset 0 0 20px rgba(255,255,255,0.05)`,
                     textShadow: activeStory.textColor === '#000000' ? 'none' : '0 2px 10px rgba(0,0,0,0.5)',
@@ -524,8 +530,8 @@ export default function StoriesRow() {
                   {/* Export Background Layer (Only visible during share capture) */}
                   {isExporting && (
                     <>
-                      <div className="absolute inset-0 z-0" style={getStoryStyle(activeStory)} />
-                      <div className={`absolute inset-0 z-0 ${activeStory.customBackgroundImage ? 'bg-black/40' : 'bg-black/25'}`} />
+                      <div className="absolute inset-0 z-0 rounded-[28px]" style={getStoryStyle(activeStory)} />
+                      <div className={`absolute inset-0 z-0 rounded-[28px] ${activeStory.customBackgroundImage ? 'bg-black/40' : 'bg-black/25'}`} />
                     </>
                   )}
 
@@ -537,7 +543,7 @@ export default function StoriesRow() {
                     </div>
                   )}
 
-                  <div className="relative z-10 space-y-6 flex-1 flex flex-col justify-start overflow-y-auto hide-scrollbar pt-6 sm:pt-8 pb-4">
+                  <div className={`relative z-10 space-y-6 flex-1 flex flex-col justify-start ${isExporting ? '' : 'overflow-y-auto hide-scrollbar'} pt-6 sm:pt-8 pb-4`}>
                     {/* Verse attachment */}
                     {activeStory.verse && (
                       <div className="border-l-2 border-white/30 pl-4 py-1.5 animate-in fade-in slide-in-from-left-2 duration-500">

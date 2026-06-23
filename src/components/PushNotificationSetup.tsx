@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { hidayahFetch } from '@/lib/api';
@@ -10,16 +10,78 @@ import { X, Bell } from 'lucide-react';
 
 export default function PushNotificationSetup() {
   const router = useRouter();
-  const [hasRegistered, setHasRegistered] = useState(false);
-  const [inAppNotification, setInAppNotification] = useState<{title: string, body: string, route?: string} | null>(null);
+  const hasRegisteredRef = useRef(false);
+  const pathname = usePathname();
 
+  // 1. One-time listener setup
   useEffect(() => {
-    // Only run on native platforms and if we have a user
+    if (!Capacitor.isNativePlatform()) return;
+
+    let regListener: any;
+    let regErrListener: any;
+    let recvListener: any;
+    let actionListener: any;
+
+    const setupListeners = async () => {
+      regListener = await PushNotifications.addListener('registration', async (token) => {
+        console.log('Push registration success, token: ' + token.value);
+        // Send to backend
+        try {
+          await hidayahFetch('/api/users/fcm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: token.value })
+          });
+        } catch (e) {
+          console.error("Failed to register FCM token with backend", e);
+        }
+      });
+
+      regErrListener = await PushNotifications.addListener('registrationError', (error: any) => {
+        console.error('Error on push registration: ', JSON.stringify(error));
+      });
+
+      recvListener = await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        console.log('Push received: ', JSON.stringify(notification));
+        const title = notification.title || notification.notification?.title || 'New Notification';
+        const body = notification.body || notification.notification?.body || '';
+        const route = notification.data?.route;
+        
+        setInAppNotification({ title, body, route });
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+          setInAppNotification(null);
+        }, 5000);
+      });
+
+      actionListener = await PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+        console.log('Push action performed: ', JSON.stringify(notification));
+        const data = notification.actionId === 'tap' ? notification.notification.data : notification.notification.data;
+        if (data && data.route) {
+          router.push(data.route);
+        }
+      });
+    };
+
+    setupListeners();
+
+    return () => {
+      if (regListener) regListener.remove();
+      if (regErrListener) regErrListener.remove();
+      if (recvListener) recvListener.remove();
+      if (actionListener) actionListener.remove();
+    };
+  }, [router]);
+
+  // 2. Permission and Registration trigger (runs on mount and path changes)
+  useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const checkUserAndRegister = async () => {
       const token = localStorage.getItem('hidayah_token');
-      if (!token || hasRegistered) return;
+      if (!token) return; // Wait until user is logged in
+      if (hasRegisteredRef.current) return;
 
       try {
         // Create Android channels before requesting permission
@@ -54,8 +116,7 @@ export default function PushNotificationSetup() {
 
         // Register with Apple / Google to receive token
         await PushNotifications.register();
-
-        setHasRegistered(true);
+        hasRegisteredRef.current = true;
 
       } catch (e) {
         console.error('Error setting up push notifications', e);
@@ -63,56 +124,7 @@ export default function PushNotificationSetup() {
     };
 
     checkUserAndRegister();
-
-    // Listeners
-    if (Capacitor.isNativePlatform()) {
-      PushNotifications.addListener('registration', async (token) => {
-        console.log('Push registration success, token: ' + token.value);
-        // Send to backend
-        try {
-          await hidayahFetch('/api/users/fcm', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: token.value })
-          });
-        } catch (e) {
-          console.error("Failed to register FCM token with backend", e);
-        }
-      });
-
-      PushNotifications.addListener('registrationError', (error: any) => {
-        console.error('Error on push registration: ', JSON.stringify(error));
-      });
-
-      PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        console.log('Push received: ', JSON.stringify(notification));
-        const title = notification.title || notification.notification?.title || 'New Notification';
-        const body = notification.body || notification.notification?.body || '';
-        const route = notification.data?.route;
-        
-        setInAppNotification({ title, body, route });
-        
-        // Auto-dismiss after 5 seconds
-        setTimeout(() => {
-          setInAppNotification(null);
-        }, 5000);
-      });
-
-      PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-        console.log('Push action performed: ', JSON.stringify(notification));
-        const data = notification.notification.data;
-        if (data && data.route) {
-          router.push(data.route);
-        }
-      });
-    }
-
-    return () => {
-      if (Capacitor.isNativePlatform()) {
-        PushNotifications.removeAllListeners();
-      }
-    };
-  }, [hasRegistered]);
+  }, [pathname]);
 
   return (
     <AnimatePresence>

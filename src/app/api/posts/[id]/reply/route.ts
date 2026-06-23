@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Post from '@/models/Post';
 import { getAuthUser } from '@/lib/auth';
+import Notification from '@/models/Notification';
+import { pusherServer } from '@/lib/pusher-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -283,6 +285,54 @@ export async function POST(
 
     // Get the newly added reply with its database-generated _id
     const savedReply = updatedPost.replies[updatedPost.replies.length - 1];
+
+    // Handle Notifications
+    try {
+      const senderName = user.username || user.email.split('@')[0];
+      
+      if (!parentId) {
+        // Top-level comment: Notify post owner
+        if (post.userId.toString() !== user.userId.toString()) {
+          await Notification.create({
+            recipientId: post.userId,
+            senderId: user.userId,
+            senderName: senderName,
+            type: 'comment',
+            postId: postId,
+            commentText: content.trim()
+          });
+          await pusherServer.trigger(`user-${post.userId.toString()}`, 'notification', {
+            type: 'comment',
+            message: `${senderName} commented on your reflection 💬`
+          });
+        }
+      } else {
+        // Reply: Notify parent comment owner
+        const parentComment = post.replies.find((r: any) => (r._id || r.id || "").toString() === parentId);
+        if (parentComment) {
+          const parentAuthorUsername = parentComment.author.replace(/^@/, '');
+          const User = (await import('@/models/User')).default;
+          const parentUser = await User.findOne({ username: parentAuthorUsername });
+          
+          if (parentUser && parentUser._id.toString() !== user.userId.toString()) {
+            await Notification.create({
+              recipientId: parentUser._id,
+              senderId: user.userId,
+              senderName: senderName,
+              type: 'comment',
+              postId: postId,
+              commentText: content.trim()
+            });
+            await pusherServer.trigger(`user-${parentUser._id.toString()}`, 'notification', {
+              type: 'comment',
+              message: `${senderName} replied to your comment`
+            });
+          }
+        }
+      }
+    } catch (notificationErr) {
+      console.error('Comment notification error:', notificationErr);
+    }
 
     return NextResponse.json({ 
       reply: savedReply,

@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Post from '@/models/Post';
 import { getAuthUser } from '@/lib/auth';
+import Notification from '@/models/Notification';
+import { pusherServer } from '@/lib/pusher-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +53,30 @@ export async function POST(
         $addToSet: { ameens: userId },
         $inc: { ameenCount: 1 }
       });
+
+      // Trigger notification if not self-like
+      if (post.userId.toString() !== userId.toString()) {
+        const User = (await import('@/models/User')).default;
+        const sender = await User.findById(userId).select('username');
+        if (sender) {
+          try {
+            await Notification.create({
+              recipientId: post.userId,
+              senderId: userId,
+              senderName: sender.username,
+              type: 'like',
+              postId: postId,
+            });
+
+            await pusherServer.trigger(`user-${post.userId.toString()}`, 'notification', {
+              type: 'like',
+              message: `${sender.username} liked your reflection ❤️`
+            });
+          } catch (e) {
+            console.error('Like notification error:', e);
+          }
+        }
+      }
     }
 
     // Return the updated counts/status
