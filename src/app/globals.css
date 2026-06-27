@@ -24,6 +24,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Uthmanic Hafs';
+  src: url('https://fonts.quran.com/fonts/v1/UthmanicHafs.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --color-hidayah-primary: #EBE3D5;
   --color-hidayah-secondary: #DCC9B1;
@@ -208,7 +216,7 @@
   }
 
   .font-quran {
-    font-family: var(--font-scheherazade), var(--font-noto-naskh), serif;
+    font-family: 'Uthmanic Hafs', 'Amiri Quran', var(--font-scheherazade), serif;
     font-weight: 400;
     line-height: 2.1; 
     text-rendering: optimizeLegibility;
@@ -224,7 +232,7 @@
     text-align: justify;
     text-justify: inter-word;
     line-height: 2.1; /* Improved for better mobile readability */
-    font-family: var(--font-scheherazade), var(--font-noto-naskh), serif;
+    font-family: 'Uthmanic Hafs', 'Amiri Quran', var(--font-scheherazade), serif;
     word-spacing: 0.15em;
     text-rendering: optimizeLegibility;
     display: block;

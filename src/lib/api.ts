@@ -1,6 +1,5 @@
 import { Capacitor, CapacitorHttp, HttpOptions } from '@capacitor/core';
 
-const QDC_API_URL = "https://api.qurancdn.com/api/qdc";
 const PRIMARY_URL = "https://hidayah-lpqy.vercel.app";
 const FALLBACK_URL = "https://hidayah-app.vercel.app";
 export const HIDAYAH_API_URL = (process.env.NEXT_PUBLIC_HIDAYAH_API_URL || PRIMARY_URL).replace(/\/$/, '');
@@ -227,38 +226,30 @@ export interface Verse {
 }
 
 export async function getJuzs(): Promise<Juz[]> {
-  const res = await hidayahFetch(`${QDC_API_URL}/juzs`);
+  const res = await hidayahFetch(`https://api.quran.com/api/v4/juzs`);
   const data = await res.json();
   return data.juzs || [];
 }
 
 export async function getChapters(): Promise<Chapter[]> {
-  const res = await hidayahFetch(`${QDC_API_URL}/chapters?language=en`);
+  const res = await hidayahFetch(`https://api.quran.com/api/v4/chapters?language=en`);
   const data = await res.json();
   return data.chapters || [];
 }
 
 export async function getVersesByPage(page: number): Promise<Verse[]> {
   try {
-    // Attempt 1: QDC API (Official)
-    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_page/${page}?words=false&fields=text_uthmani&per_page=50`);
+    // Attempt 1: Quran.com API (Official Uthmani text)
+    const res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_page/${page}?words=false&fields=text_uthmani&per_page=50`);
     if (res.ok) {
       const data = await res.json();
       if (data.verses && data.verses.length > 0) return data.verses.map((v: any) => ({ ...v, page_number: v.page_number || page }));
     }
-    
-    // Fallback attempt: QDC API v4
-    const v4Res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_page/${page}?words=false&fields=text_uthmani&per_page=50`);
-    if (v4Res.ok) {
-      const v4Data = await v4Res.json();
-      if (v4Data.verses && v4Data.verses.length > 0) return v4Data.verses.map((v: any) => ({ ...v, page_number: v.page_number || page }));
-    }
-
-    throw new Error("QDC API empty or failed");
+    throw new Error("Quran.com API failed");
   } catch (error) {
-    console.warn("QDC failed, trying AlQuran Cloud for page", page);
+    console.warn("Quran.com failed, trying AlQuran Cloud for page", page);
     try {
-      // Attempt 2: AlQuran Cloud (Fallback)
+      // Attempt 2: AlQuran Cloud (Fallback Uthmani script)
       const arRes = await hidayahFetch(`https://api.alquran.cloud/v1/page/${page}/quran-uthmani`);
       const arData = await arRes.json();
       
@@ -279,19 +270,14 @@ export async function getVersesByPage(page: number): Promise<Verse[]> {
 
 export async function getVersesByJuz(juz: number): Promise<Verse[]> {
   try {
-    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_juz/${juz}?words=false&fields=text_uthmani&per_page=500`);
+    // Attempt 1: Quran.com API (Official Uthmani text)
+    const res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_juz/${juz}?words=false&fields=text_uthmani&per_page=500`);
     if (res.ok) {
       const data = await res.json();
       if (data.verses && data.verses.length > 0) return data.verses;
     }
     
-    const v4Res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_juz/${juz}?words=false&fields=text_uthmani&per_page=500`);
-    if (v4Res.ok) {
-      const v4Data = await v4Res.json();
-      if (v4Data.verses && v4Data.verses.length > 0) return v4Data.verses;
-    }
-    
-    throw new Error("QDC API failed");
+    throw new Error("Quran.com API failed");
   } catch (error) {
     console.warn("Falling back to AlQuran Cloud for juz", juz);
     try {
@@ -314,12 +300,15 @@ export async function getVersesByJuz(juz: number): Promise<Verse[]> {
 
 export async function getVersesByChapter(chapterId: number): Promise<Verse[]> {
   try {
-    const res = await hidayahFetch(`${QDC_API_URL}/verses/by_chapter/${chapterId}?words=false&translations=131,20&fields=text_uthmani&per_page=500`);
+    // Note: To get the full Uthmani script by chapter with all text features as requested.
+    // The preferred API is the Uthmani script one directly for the chapter if available,
+    // or standard /verses/by_chapter with text_uthmani field.
+    const res = await hidayahFetch(`https://api.quran.com/api/v4/verses/by_chapter/${chapterId}?words=false&translations=131,20&fields=text_uthmani&per_page=500`);
     if (res.ok) {
       const data = await res.json();
       if (data.verses && data.verses.length > 0) return data.verses;
     }
-    throw new Error("QDC API failed");
+    throw new Error("Quran.com API failed");
   } catch (error) {
     console.warn("Falling back to AlQuran Cloud for chapter", chapterId);
     try {
