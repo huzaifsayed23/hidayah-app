@@ -213,6 +213,7 @@ export interface Chapter {
   name_arabic: string;
   verses_count: number;
   translated_name: { name: string };
+  revelation_place?: string;
 }
 
 export interface Verse {

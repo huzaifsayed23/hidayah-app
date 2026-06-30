@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Bookmark, BookmarkCheck, Loader2, Info } from "lucide-react";
+import { ArrowLeft, Bookmark, BookmarkCheck, Loader2, Info, Languages } from "lucide-react";
 import { getChapters, getVersesByChapter, Chapter, Verse, hidayahFetch } from "@/lib/api";
 
 function toArabicIndic(num: number | string): string {
@@ -23,6 +23,7 @@ export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: s
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [fontSize, setFontSize] = useState(26); 
   const [showInfo, setShowInfo] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false); // Default to reading form
 
   useEffect(() => {
     async function loadData() {
@@ -88,7 +89,7 @@ export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: s
       <header className="sticky top-0 z-30 bg-[var(--color-hidayah-primary)]/90 backdrop-blur-md border-b border-hidayah-border/30 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/surahs" className="p-2 hover:bg-hidayah-secondary rounded-full transition-colors">
+            <Link href="/surahs" className="p-2 hover:bg-[var(--color-hidayah-secondary)] rounded-full transition-colors">
               <ArrowLeft className="w-6 h-6 text-hidayah-dark/60" />
             </Link>
             <div>
@@ -96,30 +97,62 @@ export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: s
               <p className="text-[10px] tracking-widest text-hidayah-gold uppercase font-medium">Surah {chapter.id}</p>
             </div>
           </div>
-          <button onClick={toggleBookmark} className="p-2">
-            {isBookmarked ? <BookmarkCheck className="w-6 h-6 text-hidayah-gold" /> : <Bookmark className="w-6 h-6 text-hidayah-dark/30" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowTranslation(!showTranslation)} 
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase transition-all ${showTranslation ? 'bg-hidayah-gold text-white shadow-md' : 'bg-[var(--color-hidayah-secondary)] text-hidayah-dark border border-hidayah-border/50 hover:bg-hidayah-border/20'}`}
+            >
+              <Languages className="w-3.5 h-3.5" />
+              <span>{showTranslation ? "Hide" : "Trans"}</span>
+            </button>
+            <button onClick={toggleBookmark} className="p-2">
+              {isBookmarked ? <BookmarkCheck className="w-6 h-6 text-hidayah-gold" /> : <Bookmark className="w-6 h-6 text-hidayah-dark/30" />}
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="max-w-4xl mx-auto px-6 py-12">
-        <div className="text-center mb-16">
+        <div className="text-center mb-12">
           <span className="text-5xl font-quran block mb-4">{chapter.name_arabic}</span>
           <span className="text-sm tracking-widest text-hidayah-gold uppercase font-medium">{chapter.translated_name.name}</span>
         </div>
 
-        <div className="flex flex-col gap-10">
-          {verses.map((verse) => (
-            <div key={verse.id} className="bg-[var(--color-hidayah-secondary)] p-6 rounded-[32px] border border-hidayah-border/40 shadow-sm">
-              <div className="text-right font-quran mushaf-layout mb-6" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
-                {verse.text_uthmani || verse.text_indopak || verse.text || ''} <span className="text-hidayah-gold mx-1 font-quran">﴾{toArabicIndic(verse.verse_key.split(":")[1])}﴿</span>
+        {id !== "1" && id !== "9" && (
+          <div className="text-center font-quran text-[32px] sm:text-[42px] mb-12 text-hidayah-dark tracking-wide">
+            بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
+          </div>
+        )}
+
+        {showTranslation ? (
+          <div className="flex flex-col gap-10">
+            {verses.map((verse) => (
+              <div key={verse.id} className="bg-[var(--color-hidayah-secondary)] p-6 rounded-[32px] border border-hidayah-border/40 shadow-sm">
+                <div className="text-right font-quran mushaf-layout mb-6 text-[24px] sm:text-[38px]" dir="rtl">
+                  {verse.text_uthmani || verse.text_indopak || verse.text || ''} <span className="text-hidayah-gold mx-1 font-quran">﴾{toArabicIndic(verse.verse_key.split(":")[1])}﴿</span>
+                </div>
+                <div className="text-[var(--color-hidayah-dark)] text-sm leading-relaxed border-l-2 border-hidayah-gold/30 pl-4 opacity-70">
+                  {verse.translations?.[0]?.text.replace(/<[^>]*>/g, "") || "Translation unavailable"}
+                </div>
               </div>
-              <div className="text-[var(--color-hidayah-dark)] text-sm leading-relaxed border-l-2 border-hidayah-gold/30 pl-4 opacity-70">
-                {verse.translations?.[0]?.text.replace(/<[^>]*>/g, "") || "Translation unavailable"}
-              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-[var(--color-hidayah-mushaf-bg)] rounded-[32px] shadow-lg border border-hidayah-border/10 p-6 sm:p-10 transition-colors duration-300">
+            <div className="mushaf-layout font-quran text-[24px] sm:text-[38px] text-center antialiased" dir="rtl">
+              {verses.map((verse) => (
+                <span key={verse.id} className="inline mx-0.5 group">
+                  <span className="transition-colors duration-500 hover:text-hidayah-gold text-hidayah-dark">
+                    {verse.text_uthmani || verse.text_indopak || verse.text || ''}
+                  </span>
+                  <span className="text-hidayah-gold/60 mx-1 font-quran inline-flex items-center text-[20px] sm:text-[24px]">
+                    ﴾{toArabicIndic(verse.verse_key.split(":")[1])}﴿
+                  </span>
+                </span>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     </main>
   );
