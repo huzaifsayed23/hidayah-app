@@ -112,14 +112,14 @@ export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: s
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <div className="text-center mb-12">
-          <span className="text-5xl font-quran block mb-4">{chapter.name_arabic}</span>
-          <span className="text-sm tracking-widest text-hidayah-gold uppercase font-medium">{chapter.translated_name.name}</span>
+      <div className="max-w-4xl mx-auto px-6 py-6 sm:py-8">
+        <div className="text-center mb-6 sm:mb-8">
+          <span className="text-5xl font-quran block mb-1">{chapter.name_arabic}</span>
+          <span className="text-xs sm:text-sm tracking-widest text-hidayah-gold uppercase font-medium">{chapter.translated_name.name}</span>
         </div>
 
         {id !== "1" && id !== "9" && (
-          <div className="text-center font-quran text-[32px] sm:text-[42px] mb-12 text-hidayah-dark tracking-wide">
+          <div className="text-center font-quran text-[32px] sm:text-[42px] mb-6 sm:mb-8 text-hidayah-dark tracking-wide">
             بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
           </div>
         )}
