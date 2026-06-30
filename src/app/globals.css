@@ -204,11 +204,11 @@
   .font-arabic {
     font-family: var(--font-arabic);
     font-weight: 400;
-    line-height: 1.8; 
-    text-rendering: optimizeLegibility;
+    line-height: 2.2; 
+    text-rendering: auto;
     -webkit-font-smoothing: antialiased;
-    letter-spacing: 0;
-    word-spacing: 0.1em;
+    letter-spacing: normal;
+    word-spacing: normal;
     /* Essential settings for IndoPak scripts to render correctly */
     font-feature-settings: "cv01" 1, "cv02" 1, "cv03" 1, "cv04" 1, "cv05" 1, "cv06" 1, "cv07" 1, "cv08" 1, "cv09" 1, "cv10" 1, "calt" 1, "liga" 1;
     /* Maintain subtle depth */
@@ -218,28 +218,27 @@
   .font-quran {
     font-family: 'Uthmanic Hafs', 'Amiri Quran', var(--font-scheherazade), serif;
     font-weight: 400;
-    line-height: 2.1; 
-    text-rendering: optimizeLegibility;
+    line-height: 2.6; 
+    text-rendering: auto;
     -webkit-font-smoothing: antialiased;
-    letter-spacing: 0;
-    word-spacing: 0.15em;
+    letter-spacing: normal;
+    word-spacing: normal;
     font-feature-settings: "cv01" 1, "cv02" 1, "cv03" 1, "cv04" 1, "cv05" 1, "cv06" 1, "cv07" 1, "cv08" 1, "cv09" 1, "cv10" 1, "calt" 1, "liga" 1;
     text-shadow: 0.1px 0.1px 0.2px rgba(0,0,0,0.05);
   }
 
   /* Traditional Mushaf Layout Utility */
   .mushaf-layout {
-    text-align: justify;
-    text-justify: inter-word;
-    line-height: 2.1; /* Improved for better mobile readability */
+    text-align: center;
+    line-height: 2.6; /* Improved for better mobile readability */
     font-family: 'Uthmanic Hafs', 'Amiri Quran', var(--font-scheherazade), serif;
-    word-spacing: 0.15em;
-    text-rendering: optimizeLegibility;
+    word-spacing: normal;
+    text-rendering: auto;
     display: block;
     margin: 0 auto;
     max-width: 100%;
     padding: 1.5rem 1rem; /* Better breathing room */
-    word-break: keep-all;
+    word-break: normal;
     -webkit-font-smoothing: antialiased;
     color: var(--color-hidayah-dark);
   }
