@@ -128,7 +128,7 @@ export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: s
           <div className="flex flex-col gap-5">
             {verses.map((verse) => (
               <div key={verse.id} className="bg-[var(--color-hidayah-secondary)] px-5 py-4 rounded-2xl border border-hidayah-border/40 shadow-sm">
-                <div className="text-right font-quran mushaf-layout mb-3 text-[24px] sm:text-[38px]" dir="rtl">
+                <div className="text-right font-quran mb-3 text-[24px] sm:text-[38px] leading-loose" dir="rtl">
                   {verse.text_uthmani || verse.text_indopak || verse.text || ''} <span className="text-hidayah-gold mx-1 font-quran text-[20px] sm:text-[24px]">﴾{toArabicIndic(verse.verse_key.split(":")[1])}﴿</span>
                 </div>
                 <div className="text-[var(--color-hidayah-dark)] text-sm leading-relaxed border-l-2 border-hidayah-gold/30 pl-3 opacity-70">
@@ -138,18 +138,22 @@ export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: s
             ))}
           </div>
         ) : (
-          <div className="bg-[var(--color-hidayah-mushaf-bg)] rounded-[32px] shadow-lg border border-hidayah-border/10 p-6 sm:p-10 transition-colors duration-300">
-            <div className="mushaf-layout font-quran text-[24px] sm:text-[38px] text-center antialiased" dir="rtl">
-              {verses.map((verse) => (
-                <span key={verse.id} className="inline mx-0.5 group">
-                  <span className="transition-colors duration-500 hover:text-hidayah-gold text-hidayah-dark">
-                    {verse.text_uthmani || verse.text_indopak || verse.text || ''}
+          <div className="bg-[var(--color-hidayah-mushaf-bg)] rounded-[32px] shadow-lg border border-hidayah-border/10 overflow-hidden relative transition-colors duration-300">
+            <div className="p-4 sm:p-8 lg:p-10">
+              <div className="mushaf-layout font-quran text-[24px] sm:text-[38px] text-center antialiased" dir="rtl">
+                {verses.map((verse) => (
+                  <span key={verse.id} className="relative group mx-0.5 inline">
+                    <span className="transition-colors duration-500 hover:text-hidayah-gold text-hidayah-dark">
+                      {verse.text_uthmani || verse.text_indopak || verse.text || ''}
+                    </span>
+                    <span className="relative inline-flex items-center cursor-pointer select-none px-0.5">
+                      <span className="text-hidayah-gold/60 mx-1 font-quran text-[20px] sm:text-[24px]">
+                        ﴾{toArabicIndic(verse.verse_key.split(":")[1])}﴿
+                      </span>
+                    </span>
                   </span>
-                  <span className="text-hidayah-gold/60 mx-1 font-quran inline-flex items-center text-[20px] sm:text-[24px]">
-                    ﴾{toArabicIndic(verse.verse_key.split(":")[1])}﴿
-                  </span>
-                </span>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
