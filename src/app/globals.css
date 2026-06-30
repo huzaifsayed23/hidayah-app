@@ -229,17 +229,15 @@
 
   /* Traditional Mushaf Layout Utility */
   .mushaf-layout {
-    text-align: justify; /* Restored full lines */
-    text-justify: inter-word; /* Restored full lines */
+    text-align: justify;
+    text-align-last: center; /* Prevents the last line of a paragraph from stretching */
     line-height: 2.6; /* Kept to protect harakat */
     font-family: 'Uthmanic Hafs', 'Amiri Quran', var(--font-scheherazade), serif;
-    word-spacing: 0.15em; /* Restored */
     text-rendering: auto; /* Kept to prevent clipping */
     display: block;
     margin: 0 auto;
     max-width: 100%;
     padding: 1.5rem 1rem; 
-    word-break: keep-all; /* Restored */
     -webkit-font-smoothing: antialiased;
     color: var(--color-hidayah-dark);
   }
