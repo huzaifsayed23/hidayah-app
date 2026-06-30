@@ -197,10 +197,9 @@ function PacedFeed({ posts, currentUserId, currentUserName }: { posts: any[], cu
     const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && !isLoading && chunksToReveal < totalChunks) {
         setIsLoading(true);
-        setTimeout(() => {
-          setChunksToReveal(prev => prev + 1);
-          setIsLoading(false);
-        }, 600);
+        // Removed artificial delay for faster loading
+        setChunksToReveal(prev => prev + 1);
+        setIsLoading(false);
       }
     }, { threshold: 0.1 });
 

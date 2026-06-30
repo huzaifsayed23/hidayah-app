@@ -57,20 +57,21 @@ export async function POST(
       // Trigger notification if not self-like
       if (post.userId.toString() !== userId.toString()) {
         const User = (await import('@/models/User')).default;
-        const sender = await User.findById(userId).select('username');
+        const sender = await User.findById(userId).select('username email');
         if (sender) {
+          const fallbackName = sender.username || (sender.email ? sender.email.split('@')[0] : 'User');
           try {
             await Notification.create({
               recipientId: post.userId,
               senderId: userId,
-              senderName: sender.username,
+              senderName: fallbackName,
               type: 'like',
               postId: postId,
             });
 
             await pusherServer.trigger(`user-${post.userId.toString()}`, 'notification', {
               type: 'like',
-              message: `${sender.username} liked your reflection ❤️`
+              message: `${fallbackName} liked your reflection ❤️`
             });
           } catch (e) {
             console.error('Like notification error:', e);

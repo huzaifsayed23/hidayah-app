@@ -288,11 +288,11 @@ export async function POST(
 
     // Handle Notifications
     try {
-      const senderName = user.username || user.email.split('@')[0];
+      const senderName = user.username || (user.email ? user.email.split('@')[0] : 'User');
       
       if (!parentId) {
         // Top-level comment: Notify post owner
-        if (post.userId.toString() !== user.userId.toString()) {
+        if (post.userId && post.userId.toString() !== user.userId.toString()) {
           await Notification.create({
             recipientId: post.userId,
             senderId: user.userId,

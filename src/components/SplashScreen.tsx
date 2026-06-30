@@ -31,7 +31,7 @@ export function SplashScreen() {
           const token = localStorage.getItem('hidayah_token');
           if (!token) {
             setIsVisible(false);
-            setTimeout(() => router.push("/auth"), 800);
+            setTimeout(() => router.push("/auth"), 100);
             return;
           }
 
@@ -46,12 +46,12 @@ export function SplashScreen() {
             } else {
               router.push("/auth");
             }
-          }, 800);
+          }, 100);
         } catch (error) {
           setIsVisible(false);
-          setTimeout(() => router.push("/auth"), 800);
+          setTimeout(() => router.push("/auth"), 100);
         }
-      }, 2500);
+      }, 800);
 
       return () => clearTimeout(timer);
     };
