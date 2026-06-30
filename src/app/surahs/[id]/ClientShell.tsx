@@ -139,8 +139,8 @@ export default function SurahReaderPage({ initialSurahId }: { initialSurahId?: s
           </div>
         ) : (
           <div className="bg-[var(--color-hidayah-mushaf-bg)] rounded-[32px] shadow-lg border border-hidayah-border/10 overflow-hidden relative transition-colors duration-300">
-            <div className="p-4 sm:p-8 lg:p-10">
-              <div className="mushaf-layout font-quran text-[24px] sm:text-[38px] text-center antialiased" dir="rtl">
+            <div className="px-2 py-6 sm:p-8 lg:p-10">
+              <div className="mushaf-layout font-quran text-[24px] sm:text-[38px] antialiased" dir="rtl">
                 {verses.map((verse) => (
                   <span key={verse.id} className="relative group mx-0.5 inline">
                     <span className="transition-colors duration-500 hover:text-hidayah-gold text-hidayah-dark">

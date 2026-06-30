@@ -221,7 +221,7 @@ export default function StoriesRow() {
       
       // Temporarily show the background inside the card for export
       setIsExporting(true);
-      await new Promise(r => setTimeout(r, 150)); // Wait for render
+      await new Promise(r => setTimeout(r, 800)); // Increased wait time to prevent blurry/unloaded styles
       
       // We temporarily pause progression during sharing
       if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
@@ -229,8 +229,9 @@ export default function StoriesRow() {
 
       const blob = await toBlob(storyCardRef.current, {
         cacheBust: true,
-        pixelRatio: 2.5, 
+        pixelRatio: 3, // Increased for crystal clear quality
         backgroundColor: '#000000',
+        style: { color: 'white' } // Ensure text defaults to white if textColor prop is missing
       });
       
       setIsExporting(false); // Restore UI immediately
